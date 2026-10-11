@@ -28,7 +28,9 @@ $PyCmd = Get-Python
 Write-Host "    python: $PyCmd"
 
 # 1. Router files: local copy when run from a clone, else download.
-$here = Split-Path -Parent $MyInvocation.MyCommand.Path
+# $MyInvocation.MyCommand.Path is empty when run via `irm ... | iex`
+# (no script file); fall back to download mode instead of crashing.
+$here = if ($MyInvocation.MyCommand.Path) { Split-Path -Parent $MyInvocation.MyCommand.Path } else { $null }
 if (($here) -and (Test-Path (Join-Path $here 'router\router.py'))) {
   Copy-Item (Join-Path $here 'router\router.py') (Join-Path $RouterDir 'router.py') -Force
   Copy-Item (Join-Path $here 'router\muse_responses.py') (Join-Path $RouterDir 'muse_responses.py') -Force
