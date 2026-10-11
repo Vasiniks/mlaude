@@ -84,6 +84,10 @@ $settings  = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGo
 $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Limited
 try {
   Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Force | Out-Null
+  # Restart, not just start: the router caches the API key per process, so an
+  # already-running instance would keep serving the old key after a key change.
+  try { Stop-ScheduledTask -TaskName $TaskName -ErrorAction Stop } catch {}
+  Start-Sleep 1
   Start-ScheduledTask -TaskName $TaskName
   Write-Host '    scheduled task registered + started (log: router.log)'
 } catch {
