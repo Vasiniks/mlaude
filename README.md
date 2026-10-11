@@ -1,0 +1,110 @@
+# mlaude — one Claude session, Anthropic + Meta models, 1M context
+
+A tiny localhost proxy that lets **one Claude Code session** use both providers:
+
+- `muse-*` → Meta (`api.meta.ai`, Responses API with `prompt_cache_key`, `/v1/messages` fallback)
+- everything else → Anthropic (`api.anthropic.com`, byte-for-byte pass-through, streamed)
+
+Standard library Python only. No Docker, no npm, no pip packages.
+Verified live on macOS: `muse-spark-1.3` returns `200` with a valid Anthropic-shaped message.
+
+## Quick install
+
+**Mac / Linux:**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Vasiniks/mlaude/main/install.sh | bash
+```
+
+**Windows (native PowerShell):**
+
+```powershell
+irm https://raw.githubusercontent.com/Vasiniks/mlaude/main/install.ps1 | iex
+```
+
+**Windows (WSL2 Ubuntu):** run the Mac/Linux line inside Ubuntu, then point Claude Code at it. Native and WSL both work; pick one (native = Scheduled Task, WSL = Linux-side agent).
+
+The installer will:
+
+1. Copy `router/router.py` + `router/muse_responses.py` to `~/.local/share/claude-router/`
+2. Ask for your **Meta API key** once → Keychain (`meta-model-api`) on Mac, User env var `META_API_KEY` on Windows
+3. Autostart the proxy on `127.0.0.1:8787` (LaunchAgent on Mac, Scheduled Task at logon on Windows)
+4. Merge `config/claude-settings.snippet.json` into `~/.claude/settings.json` (backup at `settings.json.bak-mlaude`): sets `ANTHROPIC_BASE_URL`, `MAX_CONTEXT_TOKENS=1000000`, the `muse-spark-1.3-contributor` model + picker entry, and the skill-overrides list
+
+Then **restart Claude Code** and pick `Muse Spark 1.3 (contributor)` for Meta or any `claude-*` for Anthropic.
+
+## Verify
+
+```bash
+./verify.sh        # Mac/Linux
+.\verify.ps1       # Windows
+```
+
+What it checks:
+
+| # | Probe | Proves |
+|---|-------|--------|
+| 1 | `GET /` contains `Anthropic API` | router is up, pass-through alive |
+| 2 | `claude-*` POST → `401` (no key) | Anthropic forward path works |
+| 3 | `muse-spark-1.3` POST → `200` + `"type":"message"` | Meta Responses→Messages translation works |
+
+## Skills, context, and config
+
+- **Skills are shared, not split.** The proxy never filters your tools: `merge_embedded_tools()` re-attaches tool definitions carried inside extension blocks, and unknown block types degrade to text (logged to stderr) instead of failing the turn. Both backends see the same skills/context; only the transport changes.
+- **Context = 1M.** The snippet sets `CLAUDE_CODE_MAX_CONTEXT_TOKENS=1000000`. Meta turns use `prompt_cache_key=claude-code` + 24h retention so repeated prefixes bill as cached input.
+- **Config files that matter:**
+  - `~/.claude/settings.json` — client side (base URL, model, picker, skill overrides). The installer merges; your other keys are preserved.
+  - `~/Library/LaunchAgents/com.user.claude-router.plist` (Mac) / Scheduled Task `ClaudeRouter` (Win) — autostart.
+  - Keychain `meta-model-api` (Mac) / User env `META_API_KEY` (Win) — the only secret, never in the repo.
+  - `config/claude-settings.snippet.json` — the exact snippet the installer merges (shipped as-is from a working machine).
+
+## The one diff from the live machine
+
+`router/router.py` in this repo is byte-identical to the proven Mac install **except** `meta_key()` checks `META_API_KEY` env first, then Keychain. That's what makes Windows work with zero new dependencies. Everything else (schema fixes, TTL stripping, stall/ping guards, stream translation) is untouched.
+
+## Uninstall
+
+**Mac:**
+
+```bash
+launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.user.claude-router.plist 2>/dev/null || launchctl unload ~/Library/LaunchAgents/com.user.claude-router.plist
+rm ~/Library/LaunchAgents/com.user.claude-router.plist
+rm -rf ~/.local/share/claude-router
+# restore settings: cp ~/.claude/settings.json.bak-mlaude ~/.claude/settings.json
+```
+
+**Windows:**
+
+```powershell
+Unregister-ScheduledTask -TaskName ClaudeRouter -Confirm:$false
+Remove-Item -Recurse "$env:USERPROFILE\.local\share\claude-router"
+[Environment]::SetEnvironmentVariable('META_API_KEY', $null, 'User')
+```
+
+## Troubleshooting
+
+- `Meta API key not found (502)` → re-run the installer and paste the key, or set `META_API_KEY` env and restart the router.
+- Port in use → `ROUTER_PORT=8788 ./install.sh` (and update `ANTHROPIC_BASE_URL` to match).
+- `muse via messages (fallback: …)` in logs → the translator hit something unmappable and correctly fell back to Meta `/v1/messages`. Normal.
+- `prompt is too long` → Claude Code compacts and retries automatically (the translator maps Meta's length errors to that string).
+- Router log (Mac): `~/Library/Logs/claude-router.log`.
+
+## Security
+
+- Binds `127.0.0.1` only — never expose it to a network.
+- No secrets in this repo. The key lives in Keychain / User env, the settings backup is local-only.
+- Public repo safe: `router/`, installers, plist/XML template, config snippet, and docs contain no tokens.
+
+## Layout
+
+```
+mlaude/
+  router/router.py  router/muse_responses.py   # the proxy (stdlib only)
+  install.sh  install.ps1                       # installers (curl | bash / irm | iex)
+  verify.sh   verify.ps1                        # the 3 probes above
+  launchagents/com.user.claude-router.plist     # Mac autostart template
+  windows/claude-router-task.xml                # Win Scheduled Task template
+  config/claude-settings.snippet.json           # Claude settings merged by installer
+```
+
+MIT — see `LICENSE`.

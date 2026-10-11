@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- mlaude Windows task template (logon trigger). install.ps1 registers the
+     equivalent via Register-ScheduledTask; this file is the importable backup:
+     schtasks /create /tn ClaudeRouter /xml claude-router-task.xml /f
+     Replace REPLACE_ME with your Windows username and python path. -->
+<Task version="1.4" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <Triggers>
+    <LogonTrigger>
+      <Enabled>true</Enabled>
+    </LogonTrigger>
+  </Triggers>
+  <Principals>
+    <Principal id="Author">
+      <LogonType>InteractiveToken</LogonType>
+      <RunLevel>LeastPrivilege</RunLevel>
+    </Principal>
+  </Principals>
+  <Settings>
+    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+    <AllowHardTerminate>true</AllowHardTerminate>
+    <StartWhenAvailable>true</StartWhenAvailable>
+    <RestartCount>3</RestartCount>
+    <RestartInterval>PT1M</RestartInterval>
+  </Settings>
+  <Actions Context="Author">
+    <Exec>
+      <Command>C:\Users\REPLACE_ME\AppData\Local\Programs\Python\Python313\pythonw.exe</Command>
+      <Arguments>"C:\Users\REPLACE_ME\.local\share\claude-router\router.py"</Arguments>
+    </Exec>
+  </Actions>
+</Task>
