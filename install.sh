@@ -34,25 +34,30 @@ python3 -m py_compile "$ROUTER_DIR/router.py" "$ROUTER_DIR/muse_responses.py"
 echo "    compile OK"
 
 # 2. Meta API key -> macOS Keychain (service: meta-model-api). Env fallback supported.
+# API tokens never contain whitespace, so strip it all: heals broken pastes
+# (stray newline/space) instead of storing a key Meta will reject.
 PY_BIN="$(command -v python3)"
 if [ -n "${META_API_KEY:-}" ]; then
   echo "    META_API_KEY env var is set; storing it in Keychain too..."
   META_KEY="$META_API_KEY"
 elif security find-generic-password -a "$USER" -s "$KEYCHAIN_SERVICE" -w >/dev/null 2>&1; then
-  echo "    Meta key already in Keychain; leaving it alone"
-  META_KEY=""
+  META_KEY="$(security find-generic-password -a "$USER" -s "$KEYCHAIN_SERVICE" -w)"
 else
   printf "    Paste your Meta API key (https://developers.meta.ai): "
   read -rs META_KEY
   echo ""
-  [ -n "$META_KEY" ] || { echo "    empty key; aborting" >&2; exit 1; }
 fi
-if [ -n "${META_KEY:-}" ]; then
-  if security find-generic-password -a "$USER" -s "$KEYCHAIN_SERVICE" >/dev/null 2>&1; then
+META_KEY="$(printf '%s' "$META_KEY" | tr -d '[:space:]')"
+[ -n "$META_KEY" ] || { echo "    empty key; aborting" >&2; exit 1; }
+if security find-generic-password -a "$USER" -s "$KEYCHAIN_SERVICE" >/dev/null 2>&1; then
+  if [ "$(security find-generic-password -a "$USER" -s "$KEYCHAIN_SERVICE" -w)" != "$META_KEY" ]; then
     security add-generic-password -U -a "$USER" -s "$KEYCHAIN_SERVICE" -w "$META_KEY"
+    echo "    updated Keychain ($KEYCHAIN_SERVICE)"
   else
-    security add-generic-password -a "$USER" -s "$KEYCHAIN_SERVICE" -w "$META_KEY"
+    echo "    Meta key already in Keychain; leaving it alone"
   fi
+else
+  security add-generic-password -a "$USER" -s "$KEYCHAIN_SERVICE" -w "$META_KEY"
   echo "    stored in Keychain ($KEYCHAIN_SERVICE)"
 fi
 
@@ -111,11 +116,16 @@ json.dump(cur, open(p, 'w'), indent=2)
 print('    patched ~/.claude/settings.json')
 EOF
 
-# 5. Smoke test (GET / is upstream's 404 + banner page, so check the body, not the status).
+# 5. Smoke test (Anthropic's root 404s, banner or empty, so HTTP 404 = alive).
 sleep 1
 echo "    waiting for 127.0.0.1:$PORT ..."
-for i in $(seq 1 15); do curl -s -m 2 "http://127.0.0.1:$PORT/" | grep -q "Anthropic API" && break || sleep 1; done
-curl -s -m 5 "http://127.0.0.1:$PORT/" | grep -q "Anthropic API" && echo "    router is up"
+up=0
+for i in $(seq 1 15); do
+  code=$(curl -s -o /dev/null -w "%{http_code}" -m 2 "http://127.0.0.1:$PORT/" || true)
+  if [ "$code" = "404" ]; then up=1; break; fi
+  sleep 1
+done
+if [ "$up" = "1" ]; then echo "    router is up"; else echo "    WARNING: router not answering; check ~/Library/Logs/claude-router.log"; fi
 echo ""
 echo "Done. Restart Claude Code, pick 'Muse Spark 1.3 (contributor)' for Meta"
 echo "or any claude-* model for Anthropic. Full check: ./verify.sh"

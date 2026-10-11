@@ -51,21 +51,24 @@ Write-Host "    python exe: $PyExe"
 
 # 2. Meta API key -> User environment variable META_API_KEY (registry, survives reboots).
 #    The router reads $env:META_API_KEY first, Keychain only on macOS.
-$existing = [Environment]::GetEnvironmentVariable('META_API_KEY', 'User')
-if ($env:META_API_KEY) {
-  [Environment]::SetEnvironmentVariable('META_API_KEY', $env:META_API_KEY, 'User')
-  Write-Host '    stored META_API_KEY from current session into User env'
-} elseif ($existing) {
-  Write-Host '    META_API_KEY already in User env; leaving it alone'
-} else {
+#    API tokens never contain whitespace, so strip it all: heals broken pastes
+#    (stray newline/space) instead of storing a key Meta will reject.
+$candidate = if ($env:META_API_KEY) { $env:META_API_KEY } else { [Environment]::GetEnvironmentVariable('META_API_KEY', 'User') }
+$candidate = if ($candidate) { $candidate -replace '\s', '' } else { '' }
+if (-not $candidate) {
   $sec = Read-Host '    Paste your Meta API key (https://developers.meta.ai)' -AsSecureString
-  $plain = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
-    [Runtime.InteropServices.Marshal]::SecureStringToBSTR($sec))
-  if (-not $plain) { throw 'empty key; aborting' }
-  [Environment]::SetEnvironmentVariable('META_API_KEY', $plain, 'User')
-  $env:META_API_KEY = $plain
-  Write-Host '    stored META_API_KEY in User env'
+  $candidate = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
+    [Runtime.InteropServices.Marshal]::SecureStringToBSTR($sec)) -replace '\s', ''
+  if (-not $candidate) { throw 'empty key; aborting' }
 }
+$stored = [Environment]::GetEnvironmentVariable('META_API_KEY', 'User')
+if ($candidate -ne $stored) {
+  [Environment]::SetEnvironmentVariable('META_API_KEY', $candidate, 'User')
+  Write-Host '    stored META_API_KEY in User env'
+} else {
+  Write-Host '    META_API_KEY already in User env; leaving it alone'
+}
+$env:META_API_KEY = $candidate
 
 # 3. Scheduled task: start router at logon (no admin needed).
 # A wrapper script gives us a log file (like the Mac plist) and a fixed

@@ -4,10 +4,11 @@ param([string]$Port = $(if ($env:ROUTER_PORT) { $env:ROUTER_PORT } else { '8787'
 $fail = 0
 Write-Host "==> mlaude verify (port $Port)"
 
-# 1. Router answers like the Anthropic API root (upstream returns 404 + banner, so check body, not status).
+# 1. Router answers at all (Anthropic's root 404s, banner or empty, so HTTP 404
+#    or the banner is the alive signal, not any particular body).
 try {
   $r = Invoke-WebRequest "http://127.0.0.1:$Port/" -TimeoutSec 5 -SkipHttpErrorCheck
-  if ($r.Content -match 'Anthropic API') { Write-Host '  PASS: GET / returns Anthropic banner' }
+  if (($r.StatusCode -eq 404) -or ($r.Content -match 'Anthropic API')) { Write-Host "  PASS: GET / routes to Anthropic (HTTP $($r.StatusCode))" }
   else { Write-Host '  FAIL: GET / wrong body'; $fail++ }
 } catch { Write-Host "  FAIL: GET / unreachable: $_"; $fail++ }
 

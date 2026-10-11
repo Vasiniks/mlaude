@@ -101,6 +101,9 @@ Remove-Item -Recurse "$env:USERPROFILE\.local\share\claude-router"
 ## Troubleshooting
 
 - `Meta API key not found (502)` → re-run the installer and paste the key, or set `META_API_KEY` env and restart the router.
+- Meta answers `invalid_api_key / Unauthorized` → the stored key is wrong. Re-running the installer heals whitespace-mangled pastes automatically; if it still fails, the key itself is bad — clear it and paste a fresh one from https://developers.meta.ai, then re-run:
+  - Mac: `security delete-generic-password -a "$USER" -s meta-model-api`
+  - Windows: `[Environment]::SetEnvironmentVariable('META_API_KEY', $null, 'User')` (also `$env:META_API_KEY = $null` in the current window)
 - Port in use → `ROUTER_PORT=8788 ./install.sh` (and update `ANTHROPIC_BASE_URL` to match).
 - `muse via messages (fallback: …)` in logs → the translator hit something unmappable and correctly fell back to Meta `/v1/messages`. Normal.
 - `prompt is too long` → Claude Code compacts and retries automatically (the translator maps Meta's length errors to that string).
