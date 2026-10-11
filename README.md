@@ -16,13 +16,13 @@ Verified live on macOS: `muse-spark-1.3` returns `200` with a valid Anthropic-sh
 curl -fsSL https://raw.githubusercontent.com/Vasiniks/mlaude/main/install.sh | bash
 ```
 
-**Windows (native PowerShell):**
+**Windows (native PowerShell — recommended, most lightweight):**
 
 ```powershell
 irm https://raw.githubusercontent.com/Vasiniks/mlaude/main/install.ps1 | iex
 ```
 
-**Windows (WSL2 Ubuntu):** run the Mac/Linux line inside Ubuntu, then point Claude Code at it. Native and WSL both work; pick one (native = Scheduled Task, WSL = Linux-side agent).
+**Windows (WSL2 Ubuntu — only if Claude Code runs inside WSL):** run the Mac/Linux line inside Ubuntu *instead of* the PowerShell installer. Otherwise skip this: native is lighter (no Linux VM sitting in RAM) and is the recommended setup. Never run both — two routers would fight over port 8787.
 
 The installer will:
 
