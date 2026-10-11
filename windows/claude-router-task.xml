@@ -26,8 +26,9 @@
   </Settings>
   <Actions Context="Author">
     <Exec>
-      <Command>C:\Users\REPLACE_ME\AppData\Local\Programs\Python\Python313\pythonw.exe</Command>
-      <Arguments>"C:\Users\REPLACE_ME\.local\share\claude-router\router.py"</Arguments>
+      <Command>powershell.exe</Command>
+      <Arguments>-NoProfile -WindowStyle Hidden -File "C:\Users\REPLACE_ME\.local\share\claude-router\start-router.ps1"</Arguments>
+      <WorkingDirectory>C:\Users\REPLACE_ME\.local\share\claude-router</WorkingDirectory>
     </Exec>
   </Actions>
 </Task>

@@ -104,7 +104,8 @@ Remove-Item -Recurse "$env:USERPROFILE\.local\share\claude-router"
 - Port in use → `ROUTER_PORT=8788 ./install.sh` (and update `ANTHROPIC_BASE_URL` to match).
 - `muse via messages (fallback: …)` in logs → the translator hit something unmappable and correctly fell back to Meta `/v1/messages`. Normal.
 - `prompt is too long` → Claude Code compacts and retries automatically (the translator maps Meta's length errors to that string).
-- Router log (Mac): `~/Library/Logs/claude-router.log`.
+- Router log: Mac `~/Library/Logs/claude-router.log`, Windows `%USERPROFILE%\.local\share\claude-router\router.log`.
+- Re-running an installer is safe (idempotent). On Windows, stop any manually-started router (`Ctrl+C`) first so the smoke test validates the scheduled task instead of your window.
 
 ## Security
 

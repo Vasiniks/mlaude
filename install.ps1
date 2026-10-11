@@ -68,16 +68,24 @@ if ($env:META_API_KEY) {
 }
 
 # 3. Scheduled task: start router at logon (no admin needed).
-$action   = New-ScheduledTaskAction -Execute $PyExe -Argument "`"$RouterDir\router.py`""
-$trigger  = New-ScheduledTaskTrigger -AtLogOn
-$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
+# A wrapper script gives us a log file (like the Mac plist) and a fixed
+# working directory; the task runs it hidden under an interactive principal.
+$wrapper = Join-Path $RouterDir 'start-router.ps1'
+@"
+& "$PyExe" "$RouterDir\router.py" >> "$RouterDir\router.log" 2>&1
+"@ | Set-Content $wrapper -Encoding utf8
+$action    = New-ScheduledTaskAction -Execute 'powershell.exe' `
+  -Argument "-NoProfile -WindowStyle Hidden -File `"$wrapper`"" -WorkingDirectory $RouterDir
+$trigger   = New-ScheduledTaskTrigger -AtLogOn
+$settings  = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
+$principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Limited
 try {
-  Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Settings $settings -Force | Out-Null
+  Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Force | Out-Null
   Start-ScheduledTask -TaskName $TaskName
-  Write-Host '    scheduled task registered + started'
+  Write-Host '    scheduled task registered + started (log: router.log)'
 } catch {
   Write-Warning "    could not register scheduled task: $_"
-  Write-Host "    fallback: run manually with: $PyExe `"$RouterDir\router.py`""
+  Write-Host "    fallback: run in a window with: $PyExe `"$RouterDir\router.py`""
 }
 
 # 4. Claude settings merge (preserve everything else; backup first).
@@ -108,12 +116,17 @@ print('    patched ~/.claude/settings.json')
 # so passing it as an argument drops into an interactive REPL instead.
 $mergeScript | & $pyBin @pyArgs - $snippetPath
 
-# 5. Smoke test.
+# 5. Smoke test (root answers 404 + banner, so any HTTP answer counts as up).
 Start-Sleep 2
-try {
-  (Invoke-WebRequest "http://127.0.0.1:$Port/" -TimeoutSec 5).StatusCode | Out-Null
-  Write-Host '    router is up'
-} catch { Write-Warning "    router not answering yet; it starts at logon, or run verify.ps1" }
+$up = $false
+for ($i = 0; $i -lt 15 -and -not $up; $i++) {
+  try {
+    Invoke-WebRequest "http://127.0.0.1:$Port/" -TimeoutSec 3 -SkipHttpErrorCheck | Out-Null
+    $up = $true
+  } catch { Start-Sleep 1 }
+}
+if ($up) { Write-Host '    router is up' }
+else { Write-Warning "    router not answering; see $RouterDir\router.log, or run .\verify.ps1" }
 Write-Host ''
 Write-Host "Done. Restart Claude Code, pick 'Muse Spark 1.3 (contributor)' for Meta"
 Write-Host 'or any claude-* model for Anthropic. Full check: .\verify.ps1'
