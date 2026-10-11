@@ -12,12 +12,10 @@ echo "==> mlaude verify (port $PORT)"
 # 1. Router answers at all. Anthropic's root 404s — sometimes with the banner
 #    page, sometimes with an empty body — so HTTP 404 (or the banner) is the
 #    alive signal, not any particular body.
-resp=$(curl -s -m 5 -w '\n%{http_code}' "http://127.0.0.1:$PORT/")
-code=$(printf '%s' "$resp" | tail -n 1)
-body=$(printf '%s' "$resp" | head -n -1)
-if [ "$code" = "404" ] || echo "$body" | grep -q "Anthropic API"; then ok "GET / routes to Anthropic (HTTP $code)"
-else bad "GET / returned HTTP $code with unexpected body"; fi
-else bad "GET / did not return Anthropic banner"; fi
+resp_code=$(curl -s -o /dev/null -w "%{http_code}" -m 5 "http://127.0.0.1:$PORT/" || true)
+resp_body=$(curl -s -m 5 "http://127.0.0.1:$PORT/" || true)
+if [ "$resp_code" = "404" ] || echo "$resp_body" | grep -q "Anthropic API"; then ok "GET / routes to Anthropic (HTTP $resp_code)"
+else bad "GET / returned HTTP $resp_code with unexpected body"; fi
 
 # 2. Non-muse model is forwarded to Anthropic (401 without a real key proves the forward path).
 code=$(curl -s -o /dev/null -w "%{http_code}" -m 10 "http://127.0.0.1:$PORT/v1/messages" \
