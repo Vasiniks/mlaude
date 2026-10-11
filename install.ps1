@@ -87,7 +87,7 @@ $snippetPath = if (($snippetLocal) -and (Test-Path $snippetLocal)) { $snippetLoc
   Invoke-WebRequest "https://raw.githubusercontent.com/$GH_REPO/$Branch/config/claude-settings.snippet.json" -OutFile $tmp
   $tmp
 }
-& $pyBin @pyArgs - $snippetPath @'
+$mergeScript = @'
 import json, os, sys
 snippet = json.load(open(sys.argv[1]))
 home = os.path.expanduser('~')
@@ -104,6 +104,9 @@ if os.path.exists(p):
 json.dump(cur, open(p, 'w'), indent=2)
 print('    patched ~/.claude/settings.json')
 '@
+# pipe the script to stdin: `python -` reads the program from stdin,
+# so passing it as an argument drops into an interactive REPL instead.
+$mergeScript | & $pyBin @pyArgs - $snippetPath
 
 # 5. Smoke test.
 Start-Sleep 2
