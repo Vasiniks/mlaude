@@ -33,6 +33,23 @@ The installer will:
 
 Then **restart Claude Code** and pick `Muse Spark 1.3 (contributor)` for Meta or any `claude-*` for Anthropic.
 
+## Adding models
+
+`add-model.py` registers any model id in the picker (stdlib only, Mac/Windows/Linux):
+
+```bash
+# add + make active
+python3 add-model.py --model muse-spark-1.3-contributor \
+    --label "Muse Spark 1.3 (contributor)" \
+    --description "Meta, 1M context, via local router" --use
+
+# add without switching, list entries
+python3 add-model.py --model claude-opus-4-6 --label "Opus 4.6"
+python3 add-model.py --list
+```
+
+Backs up settings first, never duplicates (re-running updates the entry), preserves everything else. Restart Claude Code to see new entries. Remember: only `muse-*` ids route to Meta — anything else goes to Anthropic, so the id you add decides the backend.
+
 ## Verify
 
 ```bash
