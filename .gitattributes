@@ -1,0 +1,2 @@
+# Keep shell scripts LF so macOS/Linux never see CRLF from Windows checkouts.
+*.sh text eol=lf

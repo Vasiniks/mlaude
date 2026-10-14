@@ -134,7 +134,34 @@ for ($i = 0; $i -lt 15 -and -not $up; $i++) {
 }
 if ($up) { Write-Host '    router is up' }
 else { Write-Warning "    router not answering; see $RouterDir\router.log, or run .\verify.ps1" }
+
+# 6. mlaude alias: `mlaude status|start|stop|auto|help` in every new terminal.
+$mlaudeLocal = if ($here) { Join-Path $here 'mlaude.ps1' } else { $null }
+$mlaudeDest = Join-Path $RouterDir 'mlaude.ps1'
+if (($mlaudeLocal) -and (Test-Path $mlaudeLocal)) {
+  Copy-Item $mlaudeLocal $mlaudeDest -Force
+  Write-Host '    copied mlaude.ps1 from local checkout'
+} else {
+  Invoke-WebRequest "https://raw.githubusercontent.com/$GH_REPO/$Branch/mlaude.ps1" -OutFile $mlaudeDest
+  Write-Host '    downloaded mlaude.ps1 from GitHub'
+}
+# Persist: dot-source wrapper in $PROFILE (idempotent) + define now.
+$wrapperLine = 'function mlaude { & "$env:USERPROFILE\.local\share\claude-router\mlaude.ps1" @args }'
+try {
+  if (-not (Test-Path $PROFILE)) { New-Item -ItemType File -Force -Path $PROFILE | Out-Null }
+  $prof = Get-Content $PROFILE -Raw -ErrorAction SilentlyContinue
+  if ($prof -notmatch 'claude-router\\mlaude\.ps1') {
+    Add-Content $PROFILE "`n# mlaude router control`n$wrapperLine"
+    Write-Host '    added mlaude function to $PROFILE'
+  } else {
+    Write-Host '    mlaude function already in $PROFILE'
+  }
+} catch {
+  Write-Warning "    could not update `$PROFILE: $_ (run manually once: $wrapperLine)"
+}
+try { Invoke-Expression $wrapperLine } catch {}
 Write-Host ''
 Write-Host "Done. Restart Claude Code, pick 'Muse Spark 1.3 (contributor)' for Meta"
 Write-Host 'or any claude-* model for Anthropic. Full check: .\verify.ps1'
+Write-Host 'Terminal control: mlaude status|start|stop|auto|help (restart terminal first)'
 Write-Host "WSL alternative: run install.sh inside Ubuntu with the same repo."

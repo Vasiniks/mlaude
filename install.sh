@@ -126,6 +126,27 @@ for i in $(seq 1 15); do
   sleep 1
 done
 if [ "$up" = "1" ]; then echo "    router is up"; else echo "    WARNING: router not answering; check ~/Library/Logs/claude-router.log"; fi
+
+# 6. mlaude alias: `mlaude status|start|stop|auto|help` in every new terminal.
+if [ -f "$SCRIPT_DIR/mlaude.sh" ]; then
+  cp "$SCRIPT_DIR/mlaude.sh" "$ROUTER_DIR/mlaude.sh"
+  echo "    copied mlaude.sh from local checkout"
+else
+  curl -fsSL "https://raw.githubusercontent.com/$GH_REPO/$BRANCH/mlaude.sh" -o "$ROUTER_DIR/mlaude.sh"
+  echo "    downloaded mlaude.sh from GitHub"
+fi
+chmod +x "$ROUTER_DIR/mlaude.sh"
+ALIAS_LINE='alias mlaude='\''bash "$HOME/.local/share/claude-router/mlaude.sh"'\'
+for rc in "$HOME/.zshrc" "$HOME/.bashrc"; do
+  touch "$rc"
+  if ! grep -qF 'claude-router/mlaude.sh' "$rc"; then
+    printf '\n# mlaude router control\n%s\n' "$ALIAS_LINE" >> "$rc"
+    echo "    added mlaude alias to $(basename "$rc")"
+  else
+    echo "    mlaude alias already in $(basename "$rc")"
+  fi
+done
 echo ""
 echo "Done. Restart Claude Code, pick 'Muse Spark 1.3 (contributor)' for Meta"
 echo "or any claude-* model for Anthropic. Full check: ./verify.sh"
+echo 'Terminal control: mlaude status|start|stop|auto|help (restart terminal first)'

@@ -33,6 +33,21 @@ The installer will:
 
 Then **restart Claude Code** and pick `Muse Spark 1.3 (contributor)` for Meta or any `claude-*` for Anthropic.
 
+## mlaude command (no reinstalls)
+
+The installer adds a persistent `mlaude` alias (new terminals; Mac: `~/.zshrc`/`~/.bashrc`, Windows: `$PROFILE`):
+
+```bash
+mlaude status       # router up? autostart? key? log tail
+mlaude start        # start now
+mlaude stop         # stop now (keeps login autostart)
+mlaude auto         # ensure start-at-login regardless (idempotent)
+mlaude auto off     # disable login start / mlaude auto status
+mlaude help
+```
+
+`ROUTER_PORT=8788 mlaude status` checks another port. Never `irm|iex` / `curl|bash` again to revive it — `mlaude start` / `mlaude auto` heals it from the installed copy in `~/.local/share/claude-router/`.
+
 ## Adding models
 
 `add-model.py` registers any model id in the picker (stdlib only, Mac/Windows/Linux):
@@ -122,6 +137,7 @@ Remove-Item -Recurse "$env:USERPROFILE\.local\share\claude-router"
 mlaude/
   router/router.py  router/muse_responses.py   # the proxy (stdlib only)
   install.sh  install.ps1                       # installers (curl | bash / irm | iex)
+  mlaude.sh  mlaude.ps1                         # terminal alias (status/start/stop/auto/help)
   verify.sh   verify.ps1                        # the 3 probes above
   launchagents/com.user.claude-router.plist     # Mac autostart template
   windows/claude-router-task.xml                # Win Scheduled Task template
