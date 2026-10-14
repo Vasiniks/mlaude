@@ -31,5 +31,14 @@ body=$(curl -s -m 20 "http://127.0.0.1:$PORT/v1/messages" \
 if echo "$body" | grep -q '"type":"message"'; then ok "muse-spark POST returns Anthropic-shaped message via Meta"
 else bad "muse-spark POST did not return a message: $(echo "$body" | head -c 300)"; fi
 
+# 4. Turns Meta can't map exactly are sanitized, not failed: stop_sequences
+#    makes Meta's API 400, so the router drops it (logged) and serves the turn
+#    via Responses instead.
+sbody=$(curl -s -m 20 "http://127.0.0.1:$PORT/v1/messages" \
+  -X POST -H "content-type: application/json" -H "x-api-key: test" -H "anthropic-version: 2023-06-01" \
+  -d '{"model":"muse-spark-1.3","max_tokens":5,"stop_sequences":["x"],"messages":[{"role":"user","content":"hi"}]}')
+if echo "$sbody" | grep -q '"type":"message"'; then ok "stop_sequences turn sanitized to Anthropic-shaped message (no 400)"
+else bad "stop_sequences turn failed: $(echo "$sbody" | head -c 300)"; fi
+
 echo "==> $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

@@ -7,7 +7,8 @@ This module serves a Claude Code /v1/messages request through /v1/responses and
 converts the reply (streamed or not) back into Anthropic format.
 
 to_responses() raises Unsupported for anything it can't map exactly; the router
-then forwards that request to /v1/messages unchanged.
+then forwards a sanitized copy of that request to /v1/messages (fields Meta
+rejects, like stop_sequences and server-side tools, are dropped and logged).
 """
 import hashlib
 import http.client
@@ -119,6 +120,12 @@ def merge_embedded_tools(data):
     return changed
 
 
+def _note_drop(what, why):
+    if what not in _seen_unknown:
+        _seen_unknown.add(what)
+        sys.stderr.write("  muse: dropped %s (%s)\n" % (what, why))
+
+
 def normalize_for_messages(data):
     """Make a request safe for Meta's /v1/messages fallback. Returns True if changed."""
     changed = False
@@ -126,6 +133,30 @@ def normalize_for_messages(data):
         if f in data:
             del data[f]
             changed = True
+    # Meta rejects `stop_sequences` (400) and cannot execute server-side tools
+    # (e.g. web_search_*); the Responses path can't map them either. Drop both
+    # so the turn succeeds without them instead of failing outright.
+    if data.get("stop_sequences"):
+        _note_drop("stop_sequences", "Meta rejects them")
+        del data["stop_sequences"]
+        changed = True
+    tools = data.get("tools")
+    if isinstance(tools, list):
+        dropped = set()
+        for t in tools:
+            if isinstance(t, dict) and t.get("type") not in (None, "custom"):
+                _note_drop("server tool %r" % (t.get("type"),),
+                           "Meta can't execute it; tool %r hidden this turn" % (t.get("name"),))
+                dropped.add(t.get("name"))
+        if dropped:
+            data["tools"] = [t for t in tools
+                             if not (isinstance(t, dict) and t.get("type") not in (None, "custom"))]
+            changed = True
+            choice = data.get("tool_choice") or {}
+            if isinstance(choice, dict) and choice.get("name") in dropped:
+                _note_drop("forced tool_choice on %r" % (choice.get("name"),),
+                           "tool was dropped; reset to auto")
+                data["tool_choice"] = {"type": "auto"}
     changed |= merge_embedded_tools(data)
     for m in data.get("messages") or []:
         if not isinstance(m, dict) or m.get("role") not in ("user", "system"):

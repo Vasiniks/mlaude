@@ -79,6 +79,7 @@ What it checks:
 | 1 | `GET /` contains `Anthropic API` | router is up, pass-through alive |
 | 2 | `claude-*` POST → `401` (no key) | Anthropic forward path works |
 | 3 | `muse-spark-1.3` POST → `200` + `"type":"message"` | Meta Responses→Messages translation works |
+| 4 | `stop_sequences` POST → `200` + `"type":"message"` | turns Meta can't map are sanitized, not failed |
 
 ## Skills, context, and config
 
@@ -120,7 +121,9 @@ Remove-Item -Recurse "$env:USERPROFILE\.local\share\claude-router"
   - Mac: `security delete-generic-password -a "$USER" -s meta-model-api`
   - Windows: `[Environment]::SetEnvironmentVariable('META_API_KEY', $null, 'User')` (also `$env:META_API_KEY = $null` in the current window)
 - Port in use → `ROUTER_PORT=8788 ./install.sh` (and update `ANTHROPIC_BASE_URL` to match).
-- `muse via messages (fallback: …)` in logs → the translator hit something unmappable and correctly fell back to Meta `/v1/messages`. Normal.
+- `muse via messages (fallback: …)` in logs → the translator hit something unmappable and fell back to Meta `/v1/messages`. Normal.
+- `muse: dropped stop_sequences / server tool ...` in logs → the router sanitized a turn Meta can't serve (drops the param/tool, serves via Responses). Degraded but working, by design — not an error.
+- Meta answers `401 invalid x-api-key` on a fallback turn while normal turns return `200` → the key is Responses-scoped; the router keeps turns on the Responses path automatically. Don't rotate the key for this.
 - `prompt is too long` → Claude Code compacts and retries automatically (the translator maps Meta's length errors to that string).
 - Router log: Mac `~/Library/Logs/claude-router.log`, Windows `%USERPROFILE%\.local\share\claude-router\router.log`.
 - Re-running an installer is safe (idempotent). On Windows, stop any manually-started router (`Ctrl+C`) first so the smoke test validates the scheduled task instead of your window.

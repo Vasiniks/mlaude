@@ -31,5 +31,17 @@ try {
   else { Write-Host "  FAIL: muse-spark POST bad body: $($b.Content.Substring(0, [Math]::Min(300, $b.Content.Length)))"; $fail++ }
 } catch { Write-Host "  FAIL: muse-spark POST error: $_"; $fail++ }
 
+# 4. Turns Meta can't map exactly are sanitized, not failed: stop_sequences
+#    makes Meta's API 400, so the router drops it (logged) and serves the turn
+#    via Responses instead.
+try {
+  $s = Invoke-WebRequest "http://127.0.0.1:$Port/v1/messages" -Method Post -TimeoutSec 25 `
+    -ContentType 'application/json' `
+    -Headers @{ 'x-api-key' = 'test'; 'anthropic-version' = '2023-06-01' } `
+    -Body '{"model":"muse-spark-1.3","max_tokens":5,"stop_sequences":["x"],"messages":[{"role":"user","content":"hi"}]}'
+  if ($s.Content -match '"type":"message"') { Write-Host '  PASS: stop_sequences turn sanitized to Anthropic-shaped message (no 400)' }
+  else { Write-Host "  FAIL: stop_sequences turn bad body: $($s.Content.Substring(0, [Math]::Min(300, $s.Content.Length)))"; $fail++ }
+} catch { Write-Host "  FAIL: stop_sequences turn error: $_"; $fail++ }
+
 Write-Host "==> done, $fail failed"
 exit $fail
