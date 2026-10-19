@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# mlaude verify — Mac/Linux. Checks the three things that prove the router works.
+# mlaude verify — Mac/Linux. Checks the four things that prove the router works.
 # Usage: ./verify.sh [PORT]
 set -uo pipefail
 PORT="${1:-${ROUTER_PORT:-8787}}"

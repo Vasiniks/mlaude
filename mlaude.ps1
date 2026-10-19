@@ -98,7 +98,10 @@ function Enable-Auto {
   $pyBin = ($pyCmd -split ' ')[0]; $pyArgs = ($pyCmd -split ' ')[1..9]
   $pyExe = (& $pyBin @pyArgs -c 'import sys; print(sys.executable)')
   New-Item -ItemType Directory -Force -Path $RouterDir | Out-Null
-  @" 
+  # Pin the current port (like the Mac plist's ROUTER_PORT) so logon
+  # starts honor custom ports instead of silently reverting to 8787.
+  @"
+`$env:ROUTER_PORT = "$Port"
 & "$pyExe" "$RouterPy" >> "$LogFile" 2>&1
 "@ | Set-Content $Wrapper -Encoding utf8
   $action = New-ScheduledTaskAction -Execute 'powershell.exe' `

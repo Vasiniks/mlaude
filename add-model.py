@@ -32,7 +32,12 @@ def settings_path():
 def load(path):
     if os.path.exists(path):
         with open(path, encoding="utf-8") as f:
-            return json.load(f)
+            try:
+                return json.load(f)
+            except json.JSONDecodeError as e:
+                print("error: %s is not valid JSON: %s" % (path, e), file=sys.stderr)
+                print("fix or move it aside, then re-run", file=sys.stderr)
+                sys.exit(1)
     return {}
 
 
@@ -98,7 +103,7 @@ def main():
             return 0
         with open(path + BACKUP_SUFFIX, "w", encoding="utf-8") as f:
             f.write(before)
-        print("backed up to %s" % path + BACKUP_SUFFIX)
+        print("backed up to %s%s" % (path, BACKUP_SUFFIX))
     else:
         os.makedirs(os.path.dirname(path), exist_ok=True)
 

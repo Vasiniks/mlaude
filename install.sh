@@ -92,10 +92,13 @@ echo "    LaunchAgent loaded"
 
 # 4. Claude settings: merge snippet (env + model + picker + skillOverrides), preserving the rest.
 SNIPPET=""
+SNIPPET_TMP=""
+trap '[ -n "$SNIPPET_TMP" ] && rm -f "$SNIPPET_TMP"' EXIT
 if [ -f "$SCRIPT_DIR/config/claude-settings.snippet.json" ]; then
   SNIPPET="$SCRIPT_DIR/config/claude-settings.snippet.json"
 else
   SNIPPET="$(mktemp)"
+  SNIPPET_TMP="$SNIPPET"
   curl -fsSL "https://raw.githubusercontent.com/$GH_REPO/$BRANCH/config/claude-settings.snippet.json" -o "$SNIPPET"
 fi
 python3 - "$SNIPPET" <<'EOF'
@@ -116,13 +119,14 @@ json.dump(cur, open(p, 'w'), indent=2)
 print('    patched ~/.claude/settings.json')
 EOF
 
-# 5. Smoke test (Anthropic's root 404s, banner or empty, so HTTP 404 = alive).
+# 5. Smoke test (any HTTP answer counts as up — Anthropic's root 404s,
+#    banner or empty — same rule as verify.sh and mlaude.sh).
 sleep 1
 echo "    waiting for 127.0.0.1:$PORT ..."
 up=0
 for i in $(seq 1 15); do
   code=$(curl -s -o /dev/null -w "%{http_code}" -m 2 "http://127.0.0.1:$PORT/" || true)
-  if [ "$code" = "404" ]; then up=1; break; fi
+  if [ -n "$code" ] && [ "$code" != "000" ]; then up=1; break; fi
   sleep 1
 done
 if [ "$up" = "1" ]; then echo "    router is up"; else echo "    WARNING: router not answering; check ~/Library/Logs/claude-router.log"; fi

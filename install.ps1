@@ -74,7 +74,10 @@ $env:META_API_KEY = $candidate
 # A wrapper script gives us a log file (like the Mac plist) and a fixed
 # working directory; the task runs it hidden under an interactive principal.
 $wrapper = Join-Path $RouterDir 'start-router.ps1'
+# Pin the install-time port (like the Mac plist's ROUTER_PORT) so logon
+# starts honor custom ports instead of silently reverting to 8787.
 @"
+`$env:ROUTER_PORT = "$Port"
 & "$PyExe" "$RouterDir\router.py" >> "$RouterDir\router.log" 2>&1
 "@ | Set-Content $wrapper -Encoding utf8
 $action    = New-ScheduledTaskAction -Execute 'powershell.exe' `
@@ -123,14 +126,18 @@ print('    patched ~/.claude/settings.json')
 # so passing it as an argument drops into an interactive REPL instead.
 $mergeScript | & $pyBin @pyArgs - $snippetPath
 
-# 5. Smoke test (root answers 404 + banner, so any HTTP answer counts as up).
+# 5. Smoke test (no -SkipHttpErrorCheck: it doesn't exist on Windows
+#    PowerShell 5.1. Any HTTP answer counts as up, so catch the 404 throw
+#    and treat a response object as alive; only a connection failure waits).
 Start-Sleep 2
 $up = $false
 for ($i = 0; $i -lt 15 -and -not $up; $i++) {
   try {
-    Invoke-WebRequest "http://127.0.0.1:$Port/" -TimeoutSec 3 -SkipHttpErrorCheck | Out-Null
+    Invoke-WebRequest "http://127.0.0.1:$Port/" -TimeoutSec 3 -UseBasicParsing | Out-Null
     $up = $true
-  } catch { Start-Sleep 1 }
+  } catch {
+    if ($_.Exception.Response) { $up = $true } else { Start-Sleep 1 }
+  }
 }
 if ($up) { Write-Host '    router is up' }
 else { Write-Warning "    router not answering; see $RouterDir\router.log, or run .\verify.ps1" }

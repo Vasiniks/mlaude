@@ -123,8 +123,9 @@ class Router(BaseHTTPRequestHandler):
             headers.pop("x-api-key", None)
             try:
                 headers["authorization"] = "Bearer " + meta_key()
-            except subprocess.CalledProcessError:
-                self.send_error(502, "Meta API key not found in Keychain (service %s)" % KEYCHAIN_SERVICE)
+            except (subprocess.CalledProcessError, OSError):
+                self.send_error(502, "Meta API key not found: set META_API_KEY "
+                                     "or store it in Keychain (service %s)" % KEYCHAIN_SERVICE)
                 return
             # Prefer the Responses API, which supports prompt_cache_key; fall back to
             # Meta's /v1/messages for anything the translator can't map exactly.
@@ -175,7 +176,7 @@ class Router(BaseHTTPRequestHandler):
         finally:
             conn.close()
 
-    do_GET = do_POST = do_HEAD = _proxy
+    do_GET = do_POST = do_HEAD = do_PUT = do_DELETE = do_PATCH = do_OPTIONS = _proxy
 
     def log_message(self, fmt, *args):
         sys.stderr.write("%s %s\n" % (self.log_date_time_string(), fmt % args))

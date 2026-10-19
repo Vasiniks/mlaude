@@ -81,6 +81,12 @@ What it checks:
 | 3 | `muse-spark-1.3` POST → `200` + `"type":"message"` | Meta Responses→Messages translation works |
 | 4 | `stop_sequences` POST → `200` + `"type":"message"` | turns Meta can't map are sanitized, not failed |
 
+Unit tests for the translator (no router, key, or network needed):
+
+```bash
+python3 router/test_translator.py
+```
+
 ## Skills, context, and config
 
 - **Skills are shared, not split.** The proxy never filters your tools: `merge_embedded_tools()` re-attaches tool definitions carried inside extension blocks, and unknown block types degrade to text (logged to stderr) instead of failing the turn. Both backends see the same skills/context; only the transport changes.
@@ -139,9 +145,11 @@ Remove-Item -Recurse "$env:USERPROFILE\.local\share\claude-router"
 ```
 mlaude/
   router/router.py  router/muse_responses.py   # the proxy (stdlib only)
+  router/test_translator.py                     # offline unit tests, no key/network
   install.sh  install.ps1                       # installers (curl | bash / irm | iex)
   mlaude.sh  mlaude.ps1                         # terminal alias (status/start/stop/auto/help)
-  verify.sh   verify.ps1                        # the 3 probes above
+  verify.sh   verify.ps1                        # the 4 probes above
+  add-model.py                                  # register models in the picker anytime
   launchagents/com.user.claude-router.plist     # Mac autostart template
   windows/claude-router-task.xml                # Win Scheduled Task template
   config/claude-settings.snippet.json           # Claude settings merged by installer
