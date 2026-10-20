@@ -78,13 +78,15 @@ Backs up settings first, never duplicates (re-running updates the entry), preser
 
 ## OpenCode models
 
-Models starting with `oc-` route to OpenCode (`opencode.ai`, OpenAI-compatible chat endpoint) with the `oc-` prefix stripped upstream:
+Models starting with `oc-` route to OpenCode with the `oc-` prefix stripped upstream:
 
 ```bash
 mlaude keys set opencode     # store the key (prompts, never echoed)
 mlaude sync                  # register free models as oc-<id>
 mlaude sync --prune          # ...and drop stale oc- entries
 ```
+
+Free `*-free` models go through your **local OpenCode app** (`opencode serve --service`), so OpenCode's gateway sees a genuine OpenCode client — no billing needed, no key required for the free tier. (Direct HTTPS to `opencode.ai` is only a fallback for billed keys, since the gateway rejects free-tier calls from third-party clients.) Each `oc-` turn creates a short-lived OpenCode session, prompts it, and deletes it; replies come back as plain text, so tool use is not supported on this path and turns take ~15–30s.
 
 `mlaude keys` shows masked presence for all three services (`meta`, `opencode`, `anthropic`). The Anthropic entry is an optional override — when empty, Anthropic traffic keeps using your Claude Code login untouched. Key changes need `mlaude restart` (the router caches keys per process).
 

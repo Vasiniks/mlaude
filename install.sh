@@ -23,7 +23,7 @@ mkdir -p "$ROUTER_DIR/router" "$ROUTER_DIR/app"
 
 # 1. App files: use local copies when run from a clone, else download.
 #    Installed layout mirrors the repo: router/ + app/ subdirectories.
-ROUTER_FILES="router.py muse_responses.py oc_chat.py keys.py sync.py api.py connections.py ui.html test_router.py test_keys.py test_sync.py test_api.py test_oc_chat.py test_translator.py test_connections.py"
+ROUTER_FILES="router.py muse_responses.py oc_chat.py oc_local.py keys.py sync.py api.py connections.py ui.html test_router.py test_keys.py test_sync.py test_api.py test_oc_chat.py test_oc_local.py test_translator.py test_connections.py"
 APP_FILES="main.py tray.py test_app.py"
 if [ -f "$SCRIPT_DIR/router/router.py" ]; then
   for f in $ROUTER_FILES; do cp "$SCRIPT_DIR/router/$f" "$ROUTER_DIR/router/"; done

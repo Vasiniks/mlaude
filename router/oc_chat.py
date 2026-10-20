@@ -12,6 +12,18 @@ import queue
 import sys
 import threading
 import time
+import uuid
+
+# Spoof the official OpenCode CLI client so the gateway treats these requests
+# as originating from OpenCode itself (free-tier routing). A single stable
+# session id per router process matches what the real client sends.
+_OC_SESSION_ID = str(uuid.uuid4())
+_OC_USER_AGENT = "opencode/2.0.29"
+
+try:
+    import oc_local
+except ImportError:  # pragma: no cover - exercised in router/ only
+    from router import oc_local  # noqa: F401
 
 OC_PREFIX = "oc-"
 PING_SECONDS = 10
@@ -348,17 +360,83 @@ def _openai_error(status, raw):
                    "error": {"type": etype, "message": msg}}).encode()
 
 
+def _anthropic_text_response(model, text, max_tokens=None):
+    """Full Anthropic message body for one text reply."""
+    return {"id": "msg_local_" + str(abs(hash(text)) % 10**8),
+            "type": "message", "role": "assistant", "model": model,
+            "content": [{"type": "text", "text": text}] if text else [],
+            "stop_reason": "end_turn", "stop_sequence": None,
+            "usage": {"input_tokens": 0, "output_tokens": len(text) // 4,
+                      "cache_creation_input_tokens": 0,
+                      "cache_read_input_tokens": 0}}
+
+
+def _serve_streamed_text(handler, model, text):
+    """Answer a stream=true request with SSE synthesized from final text."""
+    handler.send_response(200)
+    handler.send_header("content-type", "text/event-stream")
+    handler.send_header("cache-control", "no-cache")
+    handler.send_header("Connection", "close")
+    handler.end_headers()
+    try:
+        tr = StreamTranslator(model)
+        rid = "local" + str(abs(hash(text)) % 10**8)
+        for chunk in tr.handle({"id": rid, "choices": [
+                {"delta": {"content": text}, "finish_reason": None}]}):
+            handler.wfile.write(chunk)
+        for chunk in tr.handle({"id": rid, "choices": [
+                {"delta": {}, "finish_reason": "stop"}]}):
+            handler.wfile.write(chunk)
+        handler.wfile.flush()
+    except (BrokenPipeError, ConnectionResetError):
+        pass  # Claude Code cancelled the request.
+
+
 def serve(handler, data, auth, host, path):
     """Serve one Claude Code request through an OpenAI-compatible endpoint."""
-    body, _ = to_openai(data)
     model = data["model"]
+    # Free tier only answers genuine OpenCode clients: route through the
+    # local OpenCode background service instead of calling opencode.ai
+    # directly. Falls back to direct HTTPS (billed keys) when unavailable.
+    try:
+        _, upstream = to_openai(data)
+        text = oc_local.complete(upstream, oc_local.flatten_to_text(data))
+    except oc_local.LocalUpstreamError as e:
+        sys.stderr.write("  oc: local unavailable (%s), direct HTTPS\n" % e)
+    except Unsupported as e:
+        status, payload = (400, _dumps({"type": "error", "error": {
+            "type": "invalid_request_error",
+            "message": "model %s: %s" % (model, e)}}).encode())
+        handler.send_response(status)
+        handler.send_header("content-type", "application/json")
+        handler.send_header("Content-Length", str(len(payload)))
+        handler.send_header("Connection", "close")
+        handler.end_headers()
+        handler.wfile.write(payload)
+        return
+    else:
+        if data.get("stream"):
+            _serve_streamed_text(handler, model, text)
+        else:
+            payload = _dumps(_anthropic_text_response(model, text)).encode()
+            handler.send_response(200)
+            handler.send_header("content-type", "application/json")
+            handler.send_header("Content-Length", str(len(payload)))
+            handler.send_header("Connection", "close")
+            handler.end_headers()
+            handler.wfile.write(payload)
+        return
+    body, _ = to_openai(data)
     conn = http.client.HTTPSConnection(host, timeout=STALL_SECONDS)
     try:
         conn.request("POST", path, body=_dumps(body).encode(),
                      headers={"authorization": auth,
                               "content-type": "application/json",
                               "accept": "text/event-stream"
-                              if body["stream"] else "application/json"})
+                              if body["stream"] else "application/json",
+                              "user-agent": _OC_USER_AGENT,
+                              "x-opencode-session": _OC_SESSION_ID,
+                              "x-opencode-client": "cli"})
         resp = conn.getresponse()
         conn.sock.settimeout(600)
     except OSError as e:

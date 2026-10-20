@@ -43,14 +43,14 @@ if (($here) -and (Test-Path (Join-Path $here 'router\router.py'))) {
   $base = "https://raw.githubusercontent.com/$GH_REPO/$Branch"
   New-Item -ItemType Directory -Force -Path (Join-Path $RouterDir 'router') | Out-Null
   New-Item -ItemType Directory -Force -Path (Join-Path $RouterDir 'app') | Out-Null
-  $routerFiles = @('router.py', 'muse_responses.py', 'oc_chat.py', 'keys.py', 'sync.py', 'api.py', 'connections.py', 'ui.html')
+  $routerFiles = @('router.py', 'muse_responses.py', 'oc_chat.py', 'oc_local.py', 'keys.py', 'sync.py', 'api.py', 'connections.py', 'ui.html')
   $appFiles = @('main.py', 'tray.py')
   foreach ($f in $routerFiles) { Invoke-WebRequest "$base/router/$f" -OutFile (Join-Path $RouterDir "router\$f") }
   foreach ($f in $appFiles) { Invoke-WebRequest "$base/app/$f" -OutFile (Join-Path $RouterDir "app\$f") }
   Write-Host '    downloaded router + app files from GitHub'
 }
 $pyBin = ($PyCmd -split ' ')[0]; $pyArgs = ($PyCmd -split ' ')[1..9]
-& $pyBin @pyArgs -m py_compile (Join-Path $RouterDir 'router\router.py') (Join-Path $RouterDir 'router\keys.py') (Join-Path $RouterDir 'router\sync.py') (Join-Path $RouterDir 'router\api.py') (Join-Path $RouterDir 'router\oc_chat.py') (Join-Path $RouterDir 'app\main.py')
+& $pyBin @pyArgs -m py_compile (Join-Path $RouterDir 'router\router.py') (Join-Path $RouterDir 'router\keys.py') (Join-Path $RouterDir 'router\sync.py') (Join-Path $RouterDir 'router\api.py') (Join-Path $RouterDir 'router\oc_chat.py') (Join-Path $RouterDir 'router\oc_local.py') (Join-Path $RouterDir 'app\main.py')
 Write-Host '    compile OK'
 
 # Tray deps (best-effort): without them the app runs headless + dashboard.
