@@ -5,9 +5,9 @@
   <key>Label</key><string>com.user.claude-router</string>
   <key>ProgramArguments</key>
   <array>
-    <!-- NOTE: install.sh rewrites these two paths with the real python3 + router location. -->
+    <!-- NOTE: install.sh rewrites these two paths with the real python3 + app location. -->
     <string>/usr/bin/python3</string>
-    <string>/Users/REPLACE_ME/.local/share/claude-router/router.py</string>
+    <string>/Users/REPLACE_ME/.local/share/claude-router/app/main.py</string>
   </array>
   <key>EnvironmentVariables</key>
   <dict>

@@ -40,5 +40,16 @@ sbody=$(curl -s -m 20 "http://127.0.0.1:$PORT/v1/messages" \
 if echo "$sbody" | grep -q '"type":"message"'; then ok "stop_sequences turn sanitized to Anthropic-shaped message (no 400)"
 else bad "stop_sequences turn failed: $(echo "$sbody" | head -c 300)"; fi
 
+# 5. oc- model is served through OpenCode. Needs a stored key: a 502 means
+# "no key", which is a SKIP, not a failure.
+ob=$(mktemp); trap 'rm -f "$ob"' EXIT
+ocode=$(curl -s -o "$ob" -w "%{http_code}" -m 20 "http://127.0.0.1:$PORT/v1/messages" \
+  -X POST -H "content-type: application/json" -H "x-api-key: test" -H "anthropic-version: 2023-06-01" \
+  -d '{"model":"oc-beam-free","max_tokens":5,"messages":[{"role":"user","content":"hi"}]}')
+obody=$(cat "$ob")
+if echo "$obody" | grep -q '"type":"message"'; then ok "oc-beam-free POST returns Anthropic-shaped message via OpenCode"
+elif [ "$ocode" = "502" ]; then echo "  SKIP: oc-beam-free (no OpenCode key stored)"
+else bad "oc-beam-free POST failed: $(echo "$obody" | head -c 300)"; fi
+
 echo "==> $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

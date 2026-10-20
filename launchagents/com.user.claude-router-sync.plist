@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.user.claude-router-sync</string>
+  <key>ProgramArguments</key>
+  <array>
+    <!-- NOTE: mlaude.sh `auto sync on` rewrites these paths. -->
+    <string>/usr/bin/python3</string>
+    <string>/Users/REPLACE_ME/.local/share/claude-router/router/sync.py</string>
+    <string>--prune</string>
+  </array>
+  <key>StartInterval</key><integer>86400</integer>
+  <key>StandardErrorPath</key><string>/Users/REPLACE_ME/Library/Logs/claude-router-sync.log</string>
+  <key>StandardOutPath</key><string>/Users/REPLACE_ME/Library/Logs/claude-router-sync.log</string>
+</dict>
+</plist>

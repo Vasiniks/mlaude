@@ -19,19 +19,35 @@ need python3
 need curl
 
 echo "==> mlaude: installing router to $ROUTER_DIR (port $PORT)"
-mkdir -p "$ROUTER_DIR"
+mkdir -p "$ROUTER_DIR/router" "$ROUTER_DIR/app"
 
-# 1. Router files: use local copies when run from a clone, else download.
+# 1. App files: use local copies when run from a clone, else download.
+#    Installed layout mirrors the repo: router/ + app/ subdirectories.
+ROUTER_FILES="router.py muse_responses.py oc_chat.py keys.py sync.py api.py connections.py ui.html test_router.py test_keys.py test_sync.py test_api.py test_oc_chat.py test_translator.py test_connections.py"
+APP_FILES="main.py tray.py test_app.py"
 if [ -f "$SCRIPT_DIR/router/router.py" ]; then
-  cp "$SCRIPT_DIR/router/router.py" "$SCRIPT_DIR/router/muse_responses.py" "$ROUTER_DIR/"
-  echo "    copied router files from local checkout"
+  for f in $ROUTER_FILES; do cp "$SCRIPT_DIR/router/$f" "$ROUTER_DIR/router/"; done
+  for f in $APP_FILES; do cp "$SCRIPT_DIR/app/$f" "$ROUTER_DIR/app/"; done
+  echo "    copied router + app files from local checkout"
 else
-  echo "    downloading router files from github ($GH_REPO@$BRANCH)..."
-  curl -fsSL "https://raw.githubusercontent.com/$GH_REPO/$BRANCH/router/router.py" -o "$ROUTER_DIR/router.py"
-  curl -fsSL "https://raw.githubusercontent.com/$GH_REPO/$BRANCH/router/muse_responses.py" -o "$ROUTER_DIR/muse_responses.py"
+  echo "    downloading files from github ($GH_REPO@$BRANCH)..."
+  for f in $ROUTER_FILES; do
+    curl -fsSL "https://raw.githubusercontent.com/$GH_REPO/$BRANCH/router/$f" -o "$ROUTER_DIR/router/$f"
+  done
+  for f in $APP_FILES; do
+    curl -fsSL "https://raw.githubusercontent.com/$GH_REPO/$BRANCH/app/$f" -o "$ROUTER_DIR/app/$f"
+  done
 fi
-python3 -m py_compile "$ROUTER_DIR/router.py" "$ROUTER_DIR/muse_responses.py"
+python3 -m py_compile "$ROUTER_DIR/router/"*.py "$ROUTER_DIR/app/"*.py
 echo "    compile OK"
+
+# 1b. Tray deps (best-effort): without them the app runs headless and the
+# dashboard stays the control surface.
+if python3 -m pip install --user pystray pillow >/dev/null 2>&1; then
+  echo "    tray deps installed"
+else
+  echo "    tray deps skipped (headless mode; dashboard still works)"
+fi
 
 # 2. Meta API key -> macOS Keychain (service: meta-model-api). Env fallback supported.
 # API tokens never contain whitespace, so strip it all: heals broken pastes
@@ -61,7 +77,34 @@ else
   echo "    stored in Keychain ($KEYCHAIN_SERVICE)"
 fi
 
-# 3. LaunchAgent (RunAtLoad + KeepAlive), templated with real paths.
+# 2b. OpenCode key (skippable — set later in the dashboard or via
+# `mlaude keys set opencode`).
+if [ -n "${OPENCODE_API_KEY:-}" ]; then
+  echo "    OPENCODE_API_KEY env var is set; storing it in Keychain too..."
+  OC_KEY="$OPENCODE_API_KEY"
+elif security find-generic-password -a "$USER" -s "opencode-api" -w >/dev/null 2>&1; then
+  OC_KEY="$(security find-generic-password -a "$USER" -s "opencode-api" -w)"
+else
+  printf "    Paste your OpenCode API key (Enter to skip, dashboard later): "
+  read -rs OC_KEY || true
+  echo ""
+fi
+OC_KEY="$(printf '%s' "$OC_KEY" | tr -d '[:space:]')"
+if [ -z "$OC_KEY" ]; then
+  echo "    skipped (dashboard or \`mlaude keys set opencode\` later)"
+elif security find-generic-password -a "$USER" -s "opencode-api" >/dev/null 2>&1; then
+  if [ "$(security find-generic-password -a "$USER" -s "opencode-api" -w)" != "$OC_KEY" ]; then
+    security add-generic-password -U -a "$USER" -s "opencode-api" -w "$OC_KEY"
+    echo "    updated Keychain (opencode-api)"
+  else
+    echo "    OpenCode key already in Keychain; leaving it alone"
+  fi
+else
+  security add-generic-password -a "$USER" -s "opencode-api" -w "$OC_KEY"
+  echo "    stored in Keychain (opencode-api)"
+fi
+
+# 3. LaunchAgent for the unified app (proxy child + tray), RunAtLoad + KeepAlive.
 mkdir -p "$(dirname "$PLIST")"
 cat > "$PLIST" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -72,7 +115,7 @@ cat > "$PLIST" <<EOF
   <key>ProgramArguments</key>
   <array>
     <string>$PY_BIN</string>
-    <string>$ROUTER_DIR/router.py</string>
+    <string>$ROUTER_DIR/app/main.py</string>
   </array>
   <key>EnvironmentVariables</key>
   <dict>
@@ -119,6 +162,13 @@ json.dump(cur, open(p, 'w'), indent=2)
 print('    patched ~/.claude/settings.json')
 EOF
 
+# 4b. Initial model sync (needs the OpenCode key; safe to defer).
+if python3 "$ROUTER_DIR/router/sync.py" --prune; then
+  echo "    initial sync done"
+else
+  echo "    initial sync deferred (add a key, then: mlaude sync)"
+fi
+
 # 5. Smoke test (any HTTP answer counts as up — Anthropic's root 404s,
 #    banner or empty — same rule as verify.sh and mlaude.sh).
 sleep 1
@@ -140,6 +190,8 @@ else
   echo "    downloaded mlaude.sh from GitHub"
 fi
 chmod +x "$ROUTER_DIR/mlaude.sh"
+# 6b. Daily model sync (idempotent; opt out with `mlaude auto sync off`).
+bash "$ROUTER_DIR/mlaude.sh" auto sync on
 ALIAS_LINE='alias mlaude='\''bash "$HOME/.local/share/claude-router/mlaude.sh"'\'
 for rc in "$HOME/.zshrc" "$HOME/.bashrc"; do
   touch "$rc"
@@ -151,6 +203,11 @@ for rc in "$HOME/.zshrc" "$HOME/.bashrc"; do
   fi
 done
 echo ""
-echo "Done. Restart Claude Code, pick 'Muse Spark 1.3 (contributor)' for Meta"
-echo "or any claude-* model for Anthropic. Full check: ./verify.sh"
-echo 'Terminal control: mlaude status|start|stop|auto|help (restart terminal first)'
+echo "Done. Restart Claude Code, pick 'Muse Spark 1.3 (contributor)' for Meta,"
+echo "'oc-*' entries for OpenCode, or any claude-* model for Anthropic."
+echo "Dashboard: http://127.0.0.1:$PORT/ui (also: mlaude open)"
+echo 'Full check: ./verify.sh (needs stored keys for the live probes)'
+echo 'Terminal control: mlaude status|start|stop|restart|sync|keys|open|uninstall|help (restart terminal first)'
+if command -v open >/dev/null 2>&1; then
+  open "http://127.0.0.1:$PORT/ui" || true
+fi

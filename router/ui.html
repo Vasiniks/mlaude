@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>mlaude Dashboard</title>
+<style>
+:root {
+  --paper: #f2f5f8; --card: #ffffff; --ink: #16212d; --muted: #5b6b7c;
+  --line: #d9e1e9; --accent: #2456e6; --accent-ink: #ffffff;
+  --ok: #1d7f43; --bad: #b3261e;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #0d1218; --card: #151d27; --ink: #e7edf4; --muted: #93a3b5;
+    --line: #26313e; --accent: #7d9bff; --accent-ink: #0d1218;
+    --ok: #5fce8a; --bad: #ff8a7a;
+    color-scheme: dark;
+  }
+}
+body {
+  background: var(--paper); color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  margin: 0 auto; max-width: 920px;
+  padding: 28px max(16px, env(safe-area-inset-left, 0px)) 64px
+    max(16px, env(safe-area-inset-right, 0px));
+}
+header { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+header svg { width: 34px; height: 34px; }
+header h1 { font-size: 24px; margin: 0; letter-spacing: -0.01em; }
+.pill { font-family: ui-monospace, monospace; font-size: 12px; border: 1px solid var(--line);
+  border-radius: 999px; padding: 4px 12px; color: var(--muted); margin-left: auto; }
+.pill.on { color: var(--ok); border-color: var(--ok); }
+.sub { color: var(--muted); font-size: 14px; margin: 0 0 20px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; min-width: 0; }
+.card.full { grid-column: 1 / -1; }
+.card h2 { font-size: 15px; margin: 0 0 12px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; }
+.tile .k { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; }
+.tile .v { font-size: 17px; margin-top: 2px; }
+.mono { font-family: ui-monospace, monospace; }
+.row { display: flex; gap: 8px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
+label { font-size: 13px; color: var(--muted); display: block; margin-top: 10px; }
+input[type=text], input[type=password] {
+  font: inherit; font-size: 14px; color: var(--ink);
+  background: var(--paper); border: 1px solid var(--line); border-radius: 8px;
+  padding: 7px 10px; width: 100%; box-sizing: border-box; margin-top: 4px;
+}
+button { font: inherit; font-size: 13px; font-weight: 600; border: 1px solid var(--line);
+  background: var(--card); color: var(--ink); border-radius: 8px; padding: 7px 13px; cursor: pointer; }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+button:disabled { opacity: 0.5; cursor: default; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+td, th { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: left; }
+th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+.scroll { overflow-x: auto; }
+.log { background: var(--paper); border-radius: 8px; padding: 10px 12px;
+  font-family: ui-monospace, monospace; font-size: 12px; line-height: 1.65;
+  white-space: pre-wrap; color: var(--muted); max-height: 220px; overflow-y: auto; }
+.hint { font-size: 12.5px; color: var(--muted); margin: 8px 0 0; }
+.err { color: var(--bad); font-size: 13px; }
+#toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+  background: var(--ink); color: var(--paper); font-size: 13px;
+  padding: 9px 16px; border-radius: 999px; display: none; }
+</style>
+</head>
+<body>
+<header>
+  <svg viewBox="0 0 84 84" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="9"><circle cx="42" cy="29" r="15"/><circle cx="29" cy="51" r="15"/><circle cx="55" cy="51" r="15"/></g></svg>
+  <h1>mlaude</h1>
+  <span class="pill" id="up">…</span>
+</header>
+<p class="sub">Local router control — keys, connections, models, logs. Key changes need a router restart.</p>
+
+<div class="grid">
+  <div class="card">
+    <h2>Status</h2>
+    <div class="tiles" id="tiles"></div>
+    <div class="row">
+      <button id="restart">Restart router</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Keys</h2>
+    <div id="keyrows"></div>
+    <p class="hint">Anthropic is an optional override — empty means Claude Code login. Saved keys apply after restart.</p>
+  </div>
+
+  <div class="card">
+    <h2>Connections</h2>
+    <label>OpenCode host<input type="text" id="c-host" autocomplete="off"></label>
+    <label>Chat path<input type="text" id="c-path" autocomplete="off"></label>
+    <label>Models path<input type="text" id="c-models" autocomplete="off"></label>
+    <div class="row"><button id="connsave">Save connections</button></div>
+  </div>
+
+  <div class="card">
+    <h2>Models <span class="mono" id="mcounts"></span></h2>
+    <div class="scroll"><table id="mtable"><tr><th>Model</th><th>Label</th></tr></table></div>
+    <div class="row">
+      <button class="primary" id="sync">Sync now</button>
+      <label style="margin:0"><input type="checkbox" id="prune"> prune stale oc- entries</label>
+    </div>
+    <p class="hint" id="syncmsg"></p>
+  </div>
+
+  <div class="card full">
+    <h2>Log</h2>
+    <div class="log" id="log">…</div>
+    <div class="row"><button id="logrefresh">Refresh</button></div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+"use strict";
+function toast(msg) {
+  var t = document.getElementById("toast");
+  t.textContent = msg; t.style.display = "block";
+  setTimeout(function () { t.style.display = "none"; }, 2200);
+}
+async function api(path, opts) {
+  var r = await fetch(path, opts);
+  var body = await r.json().catch(function () { return {}; });
+  if (!r.ok) throw new Error((body.error && body.error.message) || ("HTTP " + r.status));
+  return body;
+}
+var SERVICES = [["meta", "Meta"], ["opencode", "OpenCode"], ["anthropic", "Anthropic override"]];
+
+async function refresh() {
+  var s = await api("/api/status");
+  var up = document.getElementById("up");
+  up.textContent = "router up · :" + s.port;
+  up.classList.add("on");
+  document.getElementById("tiles").innerHTML =
+    [["Meta", s.keys.meta], ["OpenCode", s.keys.opencode],
+     ["Anthropic", s.keys.anthropic], ["Models", s.models.muse + s.models.oc + s.models.other],
+     ["Last sync", s.last_sync || "never"]].map(function (kv) {
+      return '<div class="tile"><div class="k">' + kv[0] + '</div><div class="v mono">' + kv[1] + "</div></div>";
+    }).join("");
+  var kr = document.getElementById("keyrows");
+  kr.innerHTML = "";
+  SERVICES.forEach(function (svc) {
+    var wrap = document.createElement("div");
+    wrap.innerHTML = "<label>" + svc[1] + ' <span class="mono">(' + s.keys[svc[0]] + ")</span>" +
+      '<input type="password" autocomplete="new-password" placeholder="paste new key, empty keeps current"></label>';
+    var row = document.createElement("div");
+    row.className = "row";
+    var btn = document.createElement("button");
+    btn.textContent = "Save " + svc[1] + " key";
+    btn.onclick = async function () {
+      var input = wrap.querySelector("input");
+      if (!input.value) { toast("empty — kept current"); return; }
+      btn.disabled = true;
+      try {
+        var r = await api("/api/keys", {method: "POST",
+          headers: {"content-type": "application/json"},
+          body: JSON.stringify({service: svc[0], key: input.value})});
+        input.value = "";
+        toast("saved " + r.shown + " — restart router to apply");
+        refresh();
+      } catch (e) { toast("error: " + e.message); }
+      btn.disabled = false;
+    };
+    row.appendChild(btn);
+    wrap.appendChild(row);
+    kr.appendChild(wrap);
+  });
+  document.getElementById("c-host").value = s.connections.oc_host;
+  document.getElementById("c-path").value = s.connections.oc_path;
+  document.getElementById("c-models").value = s.connections.oc_models_path;
+  var m = await api("/api/models");
+  document.getElementById("mcounts").textContent =
+    m.counts.muse + " muse · " + m.counts.oc + " oc · " + m.counts.other + " other";
+  document.getElementById("mtable").innerHTML =
+    "<tr><th>Model</th><th>Label</th></tr>" + m.entries.map(function (e) {
+      return "<tr><td class='mono'>" + e.model + "</td><td>" + (e.label || "") + "</td></tr>";
+    }).join("");
+  refreshLog();
+}
+async function refreshLog() {
+  try {
+    var l = await api("/api/log?lines=40");
+    document.getElementById("log").textContent =
+      l.lines.length ? l.lines.join("\n") : "(no log yet)";
+  } catch (e) { document.getElementById("log").textContent = "error: " + e.message; }
+}
+document.getElementById("restart").onclick = async function () {
+  try { await api("/api/restart", {method: "POST"}); toast("restarting…"); }
+  catch (e) { toast("restart sent (connection drops on exec)"); }
+  setTimeout(refresh, 3000);
+};
+document.getElementById("connsave").onclick = async function () {
+  try {
+    await api("/api/connections", {method: "POST",
+      headers: {"content-type": "application/json"},
+      body: JSON.stringify({
+        oc_host: document.getElementById("c-host").value,
+        oc_path: document.getElementById("c-path").value,
+        oc_models_path: document.getElementById("c-models").value})});
+    toast("connections saved");
+  } catch (e) { toast("error: " + e.message); }
+};
+document.getElementById("sync").onclick = async function () {
+  var btn = this; btn.disabled = true;
+  try {
+    var r = await api("/api/sync", {method: "POST",
+      headers: {"content-type": "application/json"},
+      body: JSON.stringify({prune: document.getElementById("prune").checked})});
+    var d = r.diff;
+    document.getElementById("syncmsg").textContent =
+      "sync: +" + d.added.length + " ~" + d.updated.length + " −" + d.pruned.length +
+      (d.added.concat(d.updated).length ? " (" + d.added.concat(d.updated).join(", ") + ")" : "");
+    refresh();
+  } catch (e) { toast("error: " + e.message); }
+  btn.disabled = false;
+};
+document.getElementById("logrefresh").onclick = refreshLog;
+refresh().catch(function (e) {
+  document.getElementById("up").textContent = "unreachable";
+});
+</script>
+</body>
+</html>

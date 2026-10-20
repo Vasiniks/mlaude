@@ -3,8 +3,10 @@
 
 Requests whose "model" starts with "muse-" go to Meta (through its Responses
 API via muse_responses.py, or its Anthropic-compatible API as a fallback);
+"oc-" models go to OpenCode (OpenAI-compatible chat via oc_chat.py);
 everything else goes to api.anthropic.com with your normal Claude login,
-forwarded byte-for-byte and streamed through.
+forwarded byte-for-byte and streamed through. /ui and /api/* are served
+locally (dashboard + API via api.py).
 """
 import getpass
 import http.client
@@ -16,6 +18,10 @@ import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import muse_responses
+import oc_chat
+import api
+import connections
+import keys
 
 PORT = int(os.environ.get("ROUTER_PORT", "8787"))
 # "responses" (default) or "messages": which Meta API serves Muse requests.
@@ -101,8 +107,70 @@ def meta_key():
     return _meta_key
 
 
+_oc_key = None
+_oc_loaded = False
+_ao_key = None
+_ao_loaded = False
+
+
+def oc_key(store=None):
+    """OpenCode key, cached per process: changing it needs a router restart."""
+    global _oc_key, _oc_loaded
+    if not _oc_loaded:
+        _oc_key = keys.get_key("opencode", store=store)
+        _oc_loaded = True
+    return _oc_key
+
+
+def anthropic_override(store=None):
+    """Optional Anthropic key override (None = use the client's login auth)."""
+    global _ao_key, _ao_loaded
+    if not _ao_loaded:
+        _ao_key = keys.get_key("anthropic", store=store)
+        _ao_loaded = True
+    return _ao_key
+
+
+def route_for(model):
+    """Which backend serves `model`: "meta", "opencode", or "anthropic"."""
+    if (model or "").startswith(MUSE_PREFIX):
+        return "meta"
+    if (model or "").startswith(oc_chat.OC_PREFIX):
+        return "opencode"
+    return "anthropic"
+
+
+def is_local_path(path):
+    """Dashboard + API paths served locally, never proxied upstream."""
+    return (path == "/ui" or path.startswith("/ui/")
+            or path == "/api" or path.startswith("/api/"))
+
+
+def apply_anthropic_override(headers, override):
+    """Inject a stored Anthropic key, else leave the client's auth alone."""
+    if override:
+        headers["x-api-key"] = override
+
+
+def unsupported_error(model, detail):
+    """Anthropic-shaped 400 for a turn neither translator can map."""
+    payload = _dumps({"type": "error", "error": {
+        "type": "invalid_request_error",
+        "message": "model %s: %s" % (model, detail)}}).encode()
+    return 400, payload
+
+
+def _dumps(obj):
+    return json.dumps(obj, ensure_ascii=False, separators=(",", ":"))
+
+
 class Router(BaseHTTPRequestHandler):
     def _proxy(self):
+        bare = self.path.split("?")[0]
+        if is_local_path(bare):
+            # Dashboard + API, served in-process (ui.html + api.py).
+            api.handle(self)
+            return
         length = int(self.headers.get("Content-Length") or 0)
         body = self.rfile.read(length) if length else None
         data, model = None, ""
@@ -115,7 +183,31 @@ class Router(BaseHTTPRequestHandler):
 
         headers = {k.lower(): v for k, v in self.headers.items() if k.lower() not in SKIP}
         host = ANTHROPIC_HOST
-        if model.startswith(MUSE_PREFIX):
+        route = route_for(model)
+        if route == "opencode":
+            if not (self.command == "POST" and isinstance(data, dict)
+                    and self.path.split("?")[0] == "/v1/messages"):
+                self.send_error(400, "oc- models only serve POST /v1/messages")
+                return
+            key = oc_key()
+            if not key:
+                self.send_error(502, "OpenCode API key not found: set OPENCODE_API_KEY "
+                                     "or add it via the dashboard, then restart the router")
+                return
+            try:
+                cfg = connections.effective()
+                oc_chat.serve(self, data, "Bearer " + key,
+                              cfg["oc_host"], cfg["oc_path"])
+            except oc_chat.Unsupported as e:
+                status, payload = unsupported_error(model, str(e))
+                self.send_response(status)
+                self.send_header("content-type", "application/json")
+                self.send_header("Content-Length", str(len(payload)))
+                self.send_header("Connection", "close")
+                self.end_headers()
+                self.wfile.write(payload)
+            return
+        if route == "meta":
             host = META_HOST
             # Deterministic re-serialization, so the cached prompt prefix stays stable.
             if isinstance(data, dict) and adapt_for_meta(data):
@@ -144,6 +236,11 @@ class Router(BaseHTTPRequestHandler):
                     headers["anthropic-beta"] = ",".join(betas)
                 else:
                     del headers["anthropic-beta"]
+
+        if route == "anthropic":
+            # Optional stored override (opt-in via dashboard/keys); the
+            # Claude Code login stays the default when nothing is stored.
+            apply_anthropic_override(headers, anthropic_override())
 
         conn = http.client.HTTPSConnection(host, timeout=600)
         try:

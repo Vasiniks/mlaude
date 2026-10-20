@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- mlaude daily sync task template. mlaude.ps1 registers the equivalent
+     via Register-ScheduledTask; this file is the importable backup:
+     schtasks /create /tn ClaudeRouterSync /xml claude-router-sync-task.xml /f
+     Replace REPLACE_ME with your Windows username and python path. -->
+<Task version="1.4" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <Triggers>
+    <CalendarTrigger>
+      <StartBoundary>2026-01-01T03:00:00</StartBoundary>
+      <Enabled>true</Enabled>
+      <ScheduleByDay>
+        <DaysInterval>1</DaysInterval>
+      </ScheduleByDay>
+    </CalendarTrigger>
+  </Triggers>
+  <Principals>
+    <Principal id="Author">
+      <LogonType>InteractiveToken</LogonType>
+      <RunLevel>LeastPrivilege</RunLevel>
+    </Principal>
+  </Principals>
+  <Settings>
+    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+    <AllowHardTerminate>true</AllowHardTerminate>
+    <StartWhenAvailable>true</StartWhenAvailable>
+  </Settings>
+  <Actions Context="Author">
+    <Exec>
+      <Command>powershell.exe</Command>
+      <Arguments>-NoProfile -WindowStyle Hidden -File "C:\Users\REPLACE_ME\.local\share\claude-router\start-sync.ps1"</Arguments>
+      <WorkingDirectory>C:\Users\REPLACE_ME\.local\share\claude-router</WorkingDirectory>
+    </Exec>
+  </Actions>
+</Task>

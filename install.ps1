@@ -32,18 +32,34 @@ Write-Host "    python: $PyCmd"
 # (no script file); fall back to download mode instead of crashing.
 $here = if ($MyInvocation.MyCommand.Path) { Split-Path -Parent $MyInvocation.MyCommand.Path } else { $null }
 if (($here) -and (Test-Path (Join-Path $here 'router\router.py'))) {
-  Copy-Item (Join-Path $here 'router\router.py') (Join-Path $RouterDir 'router.py') -Force
-  Copy-Item (Join-Path $here 'router\muse_responses.py') (Join-Path $RouterDir 'muse_responses.py') -Force
-  Write-Host '    copied router files from local checkout'
+  New-Item -ItemType Directory -Force -Path (Join-Path $RouterDir 'router') | Out-Null
+  New-Item -ItemType Directory -Force -Path (Join-Path $RouterDir 'app') | Out-Null
+  $routerFiles = @('router.py', 'muse_responses.py', 'oc_chat.py', 'keys.py', 'sync.py', 'api.py', 'connections.py', 'ui.html', 'test_router.py', 'test_keys.py', 'test_sync.py', 'test_api.py', 'test_oc_chat.py', 'test_translator.py', 'test_connections.py')
+  $appFiles = @('main.py', 'tray.py', 'test_app.py')
+  foreach ($f in $routerFiles) { Copy-Item (Join-Path $here "router\$f") (Join-Path $RouterDir "router\$f") -Force }
+  foreach ($f in $appFiles) { Copy-Item (Join-Path $here "app\$f") (Join-Path $RouterDir "app\$f") -Force }
+  Write-Host '    copied router + app files from local checkout'
 } else {
-  $base = "https://raw.githubusercontent.com/$GH_REPO/$Branch/router"
-  Invoke-WebRequest "$base/router.py" -OutFile (Join-Path $RouterDir 'router.py')
-  Invoke-WebRequest "$base/muse_responses.py" -OutFile (Join-Path $RouterDir 'muse_responses.py')
-  Write-Host '    downloaded router files from GitHub'
+  $base = "https://raw.githubusercontent.com/$GH_REPO/$Branch"
+  New-Item -ItemType Directory -Force -Path (Join-Path $RouterDir 'router') | Out-Null
+  New-Item -ItemType Directory -Force -Path (Join-Path $RouterDir 'app') | Out-Null
+  $routerFiles = @('router.py', 'muse_responses.py', 'oc_chat.py', 'keys.py', 'sync.py', 'api.py', 'connections.py', 'ui.html')
+  $appFiles = @('main.py', 'tray.py')
+  foreach ($f in $routerFiles) { Invoke-WebRequest "$base/router/$f" -OutFile (Join-Path $RouterDir "router\$f") }
+  foreach ($f in $appFiles) { Invoke-WebRequest "$base/app/$f" -OutFile (Join-Path $RouterDir "app\$f") }
+  Write-Host '    downloaded router + app files from GitHub'
 }
 $pyBin = ($PyCmd -split ' ')[0]; $pyArgs = ($PyCmd -split ' ')[1..9]
-& $pyBin @pyArgs -m py_compile (Join-Path $RouterDir 'router.py') (Join-Path $RouterDir 'muse_responses.py')
+& $pyBin @pyArgs -m py_compile (Join-Path $RouterDir 'router\router.py') (Join-Path $RouterDir 'router\keys.py') (Join-Path $RouterDir 'router\sync.py') (Join-Path $RouterDir 'router\api.py') (Join-Path $RouterDir 'router\oc_chat.py') (Join-Path $RouterDir 'app\main.py')
 Write-Host '    compile OK'
+
+# Tray deps (best-effort): without them the app runs headless + dashboard.
+try {
+  & $pyBin @pyArgs -m pip install --user pystray pillow | Out-Null
+  Write-Host '    tray deps installed'
+} catch {
+  Write-Host '    tray deps skipped (headless mode; dashboard still works)'
+}
 
 # Resolve full python exe for the scheduled task.
 $PyExe = (& $pyBin @pyArgs -c 'import sys; print(sys.executable)')
@@ -70,15 +86,37 @@ if ($candidate -ne $stored) {
 }
 $env:META_API_KEY = $candidate
 
+# 2b. OpenCode key (skippable — set later in the dashboard or via
+# `mlaude keys set opencode`).
+$ocCandidate = if ($env:OPENCODE_API_KEY) { $env:OPENCODE_API_KEY } else { [Environment]::GetEnvironmentVariable('OPENCODE_API_KEY', 'User') }
+$ocCandidate = if ($ocCandidate) { $ocCandidate -replace '\s', '' } else { '' }
+if (-not $ocCandidate) {
+  $plain = Read-Host '    Paste your OpenCode API key (Enter to skip, dashboard later)'
+  $ocCandidate = $plain -replace '\s', ''
+}
+if (-not $ocCandidate) {
+  Write-Host '    skipped (dashboard or `mlaude keys set opencode` later)'
+} else {
+  $ocStored = [Environment]::GetEnvironmentVariable('OPENCODE_API_KEY', 'User')
+  if ($ocCandidate -ne $ocStored) {
+    [Environment]::SetEnvironmentVariable('OPENCODE_API_KEY', $ocCandidate, 'User')
+    Write-Host '    stored OPENCODE_API_KEY in User env'
+  } else {
+    Write-Host '    OPENCODE_API_KEY already in User env; leaving it alone'
+  }
+  $env:OPENCODE_API_KEY = $ocCandidate
+}
+
 # 3. Scheduled task: start router at logon (no admin needed).
 # A wrapper script gives us a log file (like the Mac plist) and a fixed
 # working directory; the task runs it hidden under an interactive principal.
 $wrapper = Join-Path $RouterDir 'start-router.ps1'
 # Pin the install-time port (like the Mac plist's ROUTER_PORT) so logon
 # starts honor custom ports instead of silently reverting to 8787.
+# The unified app (proxy child + tray) is the entrypoint, not router.py.
 @"
 `$env:ROUTER_PORT = "$Port"
-& "$PyExe" "$RouterDir\router.py" >> "$RouterDir\router.log" 2>&1
+& "$PyExe" "$RouterDir\app\main.py" >> "$RouterDir\router.log" 2>&1
 "@ | Set-Content $wrapper -Encoding utf8
 $action    = New-ScheduledTaskAction -Execute 'powershell.exe' `
   -Argument "-NoProfile -WindowStyle Hidden -File `"$wrapper`"" -WorkingDirectory $RouterDir
@@ -168,7 +206,20 @@ try {
 }
 try { Invoke-Expression $wrapperLine } catch {}
 Write-Host ''
-Write-Host "Done. Restart Claude Code, pick 'Muse Spark 1.3 (contributor)' for Meta"
-Write-Host 'or any claude-* model for Anthropic. Full check: .\verify.ps1'
-Write-Host 'Terminal control: mlaude status|start|stop|auto|help (restart terminal first)'
+
+# Initial model sync + daily sync job (both tolerate a missing key).
+try {
+  & $pyBin @pyArgs (Join-Path $RouterDir 'router\sync.py') --prune
+  Write-Host '    initial sync done'
+} catch {
+  Write-Host '    initial sync deferred (add a key, then: mlaude sync)'
+}
+try { & $mlaudeDest auto sync on } catch { Write-Warning "    daily sync not scheduled: $_" }
+
+Write-Host "Done. Restart Claude Code, pick 'Muse Spark 1.3 (contributor)' for Meta,"
+Write-Host "'oc-*' entries for OpenCode, or any claude-* model for Anthropic."
+Write-Host "Dashboard: http://127.0.0.1:$Port/ui (also: mlaude open)"
+Write-Host 'Full check: .\verify.ps1 (needs stored keys for the live probes)'
+Write-Host 'Terminal control: mlaude status|start|stop|restart|sync|keys|open|uninstall|help (restart terminal first)'
+try { Start-Process "http://127.0.0.1:$Port/ui" } catch {}
 Write-Host "WSL alternative: run install.sh inside Ubuntu with the same repo."

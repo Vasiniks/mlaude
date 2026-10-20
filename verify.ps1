@@ -52,5 +52,21 @@ try {
   else { Write-Host "  FAIL: stop_sequences turn bad body: $($s.Content.Substring(0, [Math]::Min(300, $s.Content.Length)))"; $fail++ }
 } catch { Write-Host "  FAIL: stop_sequences turn error: $_"; $fail++ }
 
+# 5. oc- model served through OpenCode. Needs a stored key: a 502 means
+#    "no key", which is a SKIP, not a failure.
+try {
+  $o = Invoke-WebRequest "http://127.0.0.1:$Port/v1/messages" -Method Post -TimeoutSec 25 -UseBasicParsing `
+    -ContentType 'application/json' `
+    -Headers @{ 'x-api-key' = 'test'; 'anthropic-version' = '2023-06-01' } `
+    -Body '{"model":"oc-beam-free","max_tokens":5,"messages":[{"role":"user","content":"hi"}]}'
+  if ($o.Content -match '"type":"message"') { Write-Host '  PASS: oc-beam-free POST returns Anthropic-shaped message via OpenCode' }
+  else { Write-Host "  FAIL: oc-beam-free POST bad body: $($o.Content.Substring(0, [Math]::Min(300, $o.Content.Length)))"; $fail++ }
+} catch {
+  $oErr = $_.Exception.Response
+  $oCode = if ($oErr) { [int]$oErr.StatusCode } else { 0 }
+  if ($oCode -eq 502) { Write-Host '  SKIP: oc-beam-free (no OpenCode key stored)' }
+  else { Write-Host "  FAIL: oc-beam-free POST error: $_"; $fail++ }
+}
+
 Write-Host "==> done, $fail failed"
 exit $fail

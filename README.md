@@ -1,9 +1,12 @@
-# mlaude — one Claude session, Anthropic + Meta models, 1M context
+# mlaude — one Claude session, Anthropic + Meta + OpenCode, dashboard included
 
-A tiny localhost proxy that lets **one Claude Code session** use both providers:
+A tiny localhost app that lets **one Claude Code session** use three backends:
 
 - `muse-*` → Meta (`api.meta.ai`, Responses API with `prompt_cache_key`, `/v1/messages` fallback)
+- `oc-*` → OpenCode (`opencode.ai`, OpenAI-compatible chat, prefix stripped upstream)
 - everything else → Anthropic (`api.anthropic.com`, byte-for-byte pass-through, streamed)
+
+Standard library Python only (tray icon needs `pystray`+`pillow`, best-effort). A web dashboard on the same port (`/ui`) manages keys, connections, models, sync, and logs.
 
 Standard library Python only. No Docker, no npm, no pip packages.
 Verified live on macOS: `muse-spark-1.3` returns `200` with a valid Anthropic-shaped message.
@@ -41,8 +44,14 @@ The installer adds a persistent `mlaude` alias (new terminals; Mac: `~/.zshrc`/`
 mlaude status       # router up? autostart? key? log tail
 mlaude start        # start now
 mlaude stop         # stop now (keeps login autostart)
+mlaude restart      # stop, then start (picks up key changes)
+mlaude sync         # fetch OpenCode models into the picker
+mlaude keys         # masked key status; `keys set <svc>` stores one
+mlaude open         # open the dashboard
 mlaude auto         # ensure start-at-login regardless (idempotent)
 mlaude auto off     # disable login start / mlaude auto status
+mlaude auto sync off  # disable the daily model sync
+mlaude uninstall [--keys]  # remove autostart + files (+ keys)
 mlaude help
 ```
 
@@ -64,6 +73,24 @@ python3 add-model.py --list
 ```
 
 Backs up settings first, never duplicates (re-running updates the entry), preserves everything else. Restart Claude Code to see new entries. Remember: only `muse-*` ids route to Meta — anything else goes to Anthropic, so the id you add decides the backend.
+
+## OpenCode models
+
+Models starting with `oc-` route to OpenCode (`opencode.ai`, OpenAI-compatible chat endpoint) with the `oc-` prefix stripped upstream:
+
+```bash
+mlaude keys set opencode     # store the key (prompts, never echoed)
+mlaude sync                  # register free models as oc-<id>
+mlaude sync --prune          # ...and drop stale oc- entries
+```
+
+`mlaude keys` shows masked presence for all three services (`meta`, `opencode`, `anthropic`). The Anthropic entry is an optional override — when empty, Anthropic traffic keeps using your Claude Code login untouched. Key changes need `mlaude restart` (the router caches keys per process).
+
+`jev-1.13-free` is deliberately never registered: Jev is a decision endpoint, not a chat model. Hosts/paths can be overridden with `OC_HOST` / `OC_PATH` env vars.
+
+## Dashboard
+
+`mlaude open` (or `http://127.0.0.1:8787/ui`) — status tiles, masked key management, connection editing, model table + sync-now, log tail, and restart. Served by the router itself; same Apple-style system-type treatment as the brand page. Key changes need `mlaude restart` (keys are cached per process — the dashboard says so after every save).
 
 ## Verify
 
@@ -102,6 +129,10 @@ python3 router/test_translator.py
 `router/router.py` in this repo is byte-identical to the proven Mac install **except** `meta_key()` checks `META_API_KEY` env first, then Keychain. That's what makes Windows work with zero new dependencies. Everything else (schema fixes, TTL stripping, stall/ping guards, stream translation) is untouched.
 
 ## Uninstall
+
+`mlaude uninstall [--keys]` stops everything, removes autostart entries (including the daily sync job) and installed files. Keys survive by default; `--keys` clears Keychain entries (Mac) / User env vars (Windows) / `~/.config/mlaude` (Linux).
+
+Manual equivalent (if the CLI is gone):
 
 **Mac:**
 
@@ -144,14 +175,19 @@ Remove-Item -Recurse "$env:USERPROFILE\.local\share\claude-router"
 
 ```
 mlaude/
-  router/router.py  router/muse_responses.py   # the proxy (stdlib only)
-  router/test_translator.py                     # offline unit tests, no key/network
+  router/router.py  router/muse_responses.py   # Meta lane (stdlib only)
+  router/oc_chat.py                             # OpenCode lane translator
+  router/keys.py  router/connections.py         # key store + endpoint settings
+  router/sync.py                                # model-list picker sync
+  router/api.py  router/ui.html                 # dashboard backend + page
+  router/test_*.py                              # offline unit tests, no key/network
+  app/main.py  app/tray.py                      # unified app + best-effort tray
   install.sh  install.ps1                       # installers (curl | bash / irm | iex)
-  mlaude.sh  mlaude.ps1                         # terminal alias (status/start/stop/auto/help)
-  verify.sh   verify.ps1                        # the 4 probes above
+  mlaude.sh  mlaude.ps1                         # terminal control (status/start/…/uninstall)
+  verify.sh   verify.ps1                        # live probes above (oc- probe skips without a key)
   add-model.py                                  # register models in the picker anytime
-  launchagents/com.user.claude-router.plist     # Mac autostart template
-  windows/claude-router-task.xml                # Win Scheduled Task template
+  launchagents/com.user.claude-router*.plist    # Mac autostart + daily sync templates
+  windows/claude-router*.xml                    # Win Scheduled Task templates
   config/claude-settings.snippet.json           # Claude settings merged by installer
 ```
 

@@ -10,13 +10,19 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $TaskName = 'ClaudeRouter'
+$SyncTaskName = 'ClaudeRouterSync'
 $RouterDir = Join-Path $env:USERPROFILE '.local\share\claude-router'
-$RouterPy = Join-Path $RouterDir 'router.py'
+$AppPy = Join-Path $RouterDir 'app\main.py'
+$SyncPy = Join-Path $RouterDir 'router\sync.py'
+$KeysPy = Join-Path $RouterDir 'router\keys.py'
 $Wrapper = Join-Path $RouterDir 'start-router.ps1'
+$SyncWrapper = Join-Path $RouterDir 'start-sync.ps1'
 $LogFile = Join-Path $RouterDir 'router.log'
+$SyncLog = Join-Path $RouterDir 'sync.log'
 $Port = if ($Port) { $Port } elseif ($env:ROUTER_PORT) { $env:ROUTER_PORT } else { '8787' }
+$Rest = @($args)
 # `mlaude status 8788` treats the extra arg as a port.
-if (($Cmd -eq 'status' -or $Cmd -eq 'start') -and ($Arg -match '^\d+$')) { $Port = $Arg; $Arg = '' }
+if (($Cmd -eq 'status' -or $Cmd -eq 'start' -or $Cmd -eq 'restart' -or $Cmd -eq 'open') -and ($Arg -match '^\d+$')) { $Port = $Arg; $Arg = '' }
 
 function Show-Help {
   @'
@@ -25,7 +31,13 @@ mlaude -- claude-router control (Windows)
   mlaude status [port]   router up? task state? key present? log tail
   mlaude start  [port]   start now (Scheduled Task, fallback: python window)
   mlaude stop            stop now (keeps task; use `mlaude auto off` to disable login start)
+  mlaude restart [port]  stop, then start (picks up key changes)
+  mlaude sync [--prune]  fetch OpenCode free models into the picker
+  mlaude keys [list|set SVC]  show (masked) or store API keys (SVC: meta|opencode|anthropic)
+  mlaude open [port]     open the dashboard in a browser
+  mlaude uninstall [--keys]  stop, remove tasks + files (+ keys with --keys)
   mlaude auto [on|off|status]  no arg = on: ensure start-at-login regardless (idempotent)
+  mlaude auto sync [on|off|status]  daily model sync job
   mlaude help            this text
 
 Env: $env:ROUTER_PORT=8788; mlaude status
@@ -100,9 +112,10 @@ function Enable-Auto {
   New-Item -ItemType Directory -Force -Path $RouterDir | Out-Null
   # Pin the current port (like the Mac plist's ROUTER_PORT) so logon
   # starts honor custom ports instead of silently reverting to 8787.
+  # The unified app (proxy child + tray) is the entrypoint, not router.py.
   @"
 `$env:ROUTER_PORT = "$Port"
-& "$pyExe" "$RouterPy" >> "$LogFile" 2>&1
+& "$pyExe" "$AppPy" >> "$LogFile" 2>&1
 "@ | Set-Content $Wrapper -Encoding utf8
   $action = New-ScheduledTaskAction -Execute 'powershell.exe' `
     -Argument "-NoProfile -WindowStyle Hidden -File `"$Wrapper`"" -WorkingDirectory $RouterDir
@@ -125,9 +138,9 @@ function Invoke-Start([string]$P) {
   # Fallback: run in this window so the user sees errors.
   $pyCmd = Find-PythonExe
   $pyBin = ($pyCmd -split ' ')[0]; $pyArgs = ($pyCmd -split ' ')[1..9]
-  Write-Host "  task didn't answer; fallback: $pyBin $RouterPy (Ctrl+C to stop)"
+  Write-Host "  task didn't answer; fallback: $pyBin $AppPy (Ctrl+C to stop)"
   $env:ROUTER_PORT = $P
-  & $pyBin @pyArgs $RouterPy
+  & $pyBin @pyArgs $AppPy --no-tray
 }
 
 function Invoke-Stop {
@@ -153,11 +166,98 @@ function Invoke-Auto([string]$A) {
   }
 }
 
+function Invoke-RouterPy([string]$Name, [string[]]$Extra) {
+  $pyCmd = Find-PythonExe
+  $pyBin = ($pyCmd -split ' ')[0]; $pyArgs = ($pyCmd -split ' ')[1..9]
+  $script = Join-Path $RouterDir $Name
+  if (-not (Test-Path $script)) { Write-Host "$Name not installed in $RouterDir (re-run the installer)"; exit 1 }
+  & $pyBin @pyArgs $script @Extra
+}
+
+function Invoke-Restart([string]$P) {
+  Invoke-Stop
+  Invoke-Start $P
+}
+
+function Invoke-Open([string]$P) {
+  $url = "http://127.0.0.1:$P/ui"
+  Write-Host "opening $url"
+  Start-Process $url
+}
+
+function Invoke-Uninstall([string]$A) {
+  Write-Host 'uninstalling mlaude...'
+  Invoke-Stop
+  try { Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false | Out-Null; Write-Host '  removed task ClaudeRouter' } catch {}
+  try { Unregister-ScheduledTask -TaskName $SyncTaskName -Confirm:$false | Out-Null; Write-Host '  removed task ClaudeRouterSync' } catch {}
+  if (Test-Path $RouterDir) { Remove-Item -Recurse -Force $RouterDir; Write-Host "  removed $RouterDir" }
+  if ($A -eq '--keys') {
+    foreach ($k in @('META_API_KEY', 'OPENCODE_API_KEY', 'ANTHROPIC_API_KEY')) {
+      [Environment]::SetEnvironmentVariable($k, $null, 'User')
+    }
+    Write-Host '  removed stored keys'
+  } else {
+    Write-Host '  keys kept (re-run with --keys to remove them too)'
+  }
+  Write-Host '  manual cleanup: mlaude function in $PROFILE'
+}
+
+function Enable-SyncTask {
+  $pyCmd = Find-PythonExe
+  $pyBin = ($pyCmd -split ' ')[0]; $pyArgs = ($pyCmd -split ' ')[1..9]
+  $pyExe = (& $pyBin @pyArgs -c 'import sys; print(sys.executable)')
+  New-Item -ItemType Directory -Force -Path $RouterDir | Out-Null
+  @"
+& "$pyExe" "$SyncPy" --prune >> "$SyncLog" 2>&1
+"@ | Set-Content $SyncWrapper -Encoding utf8
+  $action = New-ScheduledTaskAction -Execute 'powershell.exe' `
+    -Argument "-NoProfile -WindowStyle Hidden -File `"$SyncWrapper`"" -WorkingDirectory $RouterDir
+  $trigger = New-ScheduledTaskTrigger -Daily -At 3am
+  $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
+  Register-ScheduledTask -TaskName $SyncTaskName -Action $action -Trigger $trigger -Settings $settings -Force | Out-Null
+  Write-Host 'daily sync: on'
+}
+
+function Get-SyncState {
+  try {
+    $t = Get-ScheduledTask -TaskName $SyncTaskName -ErrorAction Stop
+    if ($t.State -eq 'Disabled') { return 'off (Disabled)' }
+    return "on ($($t.State), daily)"
+  } catch { return 'off (no task)' }
+}
+
+function Invoke-AutoSync([string[]]$R) {
+  $A = if ($R.Count -gt 0 -and $R[0]) { $R[0] } else { 'status' }
+  switch ($A) {
+    'on' { Enable-SyncTask }
+    'off' {
+      try { Unregister-ScheduledTask -TaskName $SyncTaskName -Confirm:$false | Out-Null; Write-Host 'daily sync: off' }
+      catch { Write-Host 'daily sync: off (no task)' }
+    }
+    'status' { Write-Host ("daily sync: " + (Get-SyncState)) }
+    default { Write-Host "unknown auto sync arg: $A (use on|off|status)"; exit 1 }
+  }
+}
+
 switch ($Cmd.ToLower()) {
   'status' { Invoke-Status $Port }
   'start' { Invoke-Start $Port }
   'stop' { Invoke-Stop }
-  'auto' { Invoke-Auto $Arg }
+  'restart' { Invoke-Restart $Port }
+  'open' { Invoke-Open $Port }
+  'sync' { Invoke-RouterPy 'router\sync.py' @args }
+  'keys' {
+    # $Arg holds the first word, $args the rest: `keys set opencode`.
+    $rest = @()
+    if ($Arg) { $rest += $Arg }
+    $rest += $args
+    if ($rest.Count -eq 0) { $rest = @('list') }
+    Invoke-RouterPy 'router\keys.py' $rest
+  }
+  'auto' {
+    if ($Arg -eq 'sync') { Invoke-AutoSync $Rest } else { Invoke-Auto $Arg }
+  }
+  'uninstall' { Invoke-Uninstall $Arg }
   'help' { Show-Help }
   '-h' { Show-Help }
   '--help' { Show-Help }
