@@ -36,11 +36,14 @@ class SyncError(Exception):
     pass
 
 
-def fetch_models(models_url, auth):
+def fetch_models(models_url, auth=None):
     """GET the model list, return [id, ...]. Raises SyncError."""
-    req = urllib.request.Request(models_url,
-                                 headers={"authorization": auth,
-                                          "accept": "application/json"})
+    headers = {"accept": "application/json",
+               # The list endpoint refuses urllib's default UA.
+               "User-Agent": "mlaude/2 (free-model sync)"}
+    if auth:
+        headers["authorization"] = auth
+    req = urllib.request.Request(models_url, headers=headers)
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
             payload = json.load(resp)
@@ -138,16 +141,14 @@ def main(argv=None):
     args = ap.parse_args(argv)
 
     key = (args.key or "").strip() or keys.get_key("opencode")
-    if not key:
-        print("error: no OpenCode key (set OPENCODE_API_KEY or store one)",
-              file=sys.stderr)
-        return 1
+    # Free-tier list is public: the key is optional, sent when present.
+    auth = ("Bearer " + key) if key else None
     url = args.models_url
     if not url:
         cfg = connections.effective()
         url = "https://" + cfg["oc_host"] + cfg["oc_models_path"]
     try:
-        ids = filter_free(fetch_models(url, "Bearer " + key))
+        ids = filter_free(fetch_models(url, auth))
     except SyncError as e:
         print("error: %s" % e, file=sys.stderr)
         return 1

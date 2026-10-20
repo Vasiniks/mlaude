@@ -2,16 +2,29 @@
 """Tests for router/sync.py — OpenCode model-list sync into the picker.
 Stdlib only. HTTP is exercised via data: URLs (real urlopen, no network).
 """
+import http.server
 import json
 import os
+import socket
 import sys
 import tempfile
+import threading
 import unittest
 from urllib.parse import quote
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import sync
+
+
+def _bind_ok():
+    try:
+        s = socket.socket()
+        s.bind(("127.0.0.1", 0))
+        s.close()
+    except OSError:
+        return False
+    return True
 
 
 def settings_file(initial=None):
@@ -96,6 +109,39 @@ class FetchTests(unittest.TestCase):
             sync.fetch_models(url, "Bearer test")
 
 
+class FetchHeaderTests(unittest.TestCase):
+    @unittest.skipUnless(_bind_ok(), "local port binding blocked in sandbox")
+    def test_keyless_fetch_sends_plain_ua_no_auth(self):
+        """The list endpoint rejects urllib's default UA; keyless fetch must
+        look like a normal client and send no Authorization header."""
+        seen = {}
+
+        class H(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                seen["ua"] = self.headers.get("User-Agent")
+                seen["auth"] = self.headers.get("Authorization")
+                body = b'{"data": [{"id": "beam-free"}]}'
+                self.send_response(200)
+                self.send_header("content-type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *a):
+                pass
+
+        server = http.server.HTTPServer(("127.0.0.1", 0), H)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        try:
+            ids = sync.fetch_models("http://127.0.0.1:%d/models"
+                                    % server.server_address[1])
+        finally:
+            server.shutdown()
+        self.assertEqual(ids, ["beam-free"])
+        self.assertIsNone(seen.get("auth"))
+        self.assertNotIn("Python-urllib", seen.get("ua") or "")
+
+
 class MainTests(unittest.TestCase):
     def test_dry_run_writes_nothing(self):
         url = models_url({"data": [{"id": "beam-free"}]})
@@ -111,6 +157,20 @@ class MainTests(unittest.TestCase):
         rc = sync.main(["--models-url", "http://127.0.0.1:9/models",
                         "--settings", path, "--key", "test"])
         self.assertEqual(rc, 1)
+
+    def test_no_key_still_lists(self):
+        """Free-tier list is public: dry-run with no key stored succeeds."""
+        saved = dict(os.environ)
+        os.environ.pop("OPENCODE_API_KEY", None)
+        try:
+            url = models_url({"data": [{"id": "beam-free"}]})
+            path = settings_file({})
+            rc = sync.main(["--models-url", url, "--settings", path,
+                            "--dry-run"])
+        finally:
+            os.environ.clear()
+            os.environ.update(saved)
+        self.assertEqual(rc, 0)
 
 
 if __name__ == "__main__":

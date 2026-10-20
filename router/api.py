@@ -227,14 +227,13 @@ def handle(handler, store=None, settings_path=None, ui_path=None,
             _err(handler, 400, err)
             return True
         key = keys.get_key("opencode", store=store)
-        if not key:
-            _err(handler, 502, "no OpenCode key stored")
-            return True
+        # Free-tier list is public: the key is optional, sent when present.
+        auth = ("Bearer " + key) if key else None
         cfg = connections.effective(connections_path)
         url = body.get("models_url") or ("https://" + cfg["oc_host"]
                                          + cfg["oc_models_path"])
         try:
-            ids = sync.filter_free(sync.fetch_models(url, "Bearer " + key))
+            ids = sync.filter_free(sync.fetch_models(url, auth))
             diff = sync.apply_sync(ids, settings_path or SETTINGS_PATH,
                                    prune=bool(body.get("prune")))
         except sync.SyncError as e:

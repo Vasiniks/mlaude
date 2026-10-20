@@ -196,6 +196,24 @@ class SyncRestartTests(unittest.TestCase):
         ctx.handle(h)
         self.assertEqual(h.status, 405)
 
+    def test_sync_without_key_still_lists(self):
+        """Free-tier list is public: no stored key needed."""
+        import sync as sync_mod
+        from urllib.parse import quote
+        saved = dict(os.environ)
+        os.environ.pop("OPENCODE_API_KEY", None)
+        try:
+            ctx = Ctx()  # empty FileStore: no opencode key stored
+            payload = quote(json.dumps({"data": [{"id": "beam-free"}]}))
+            h = FakeHandler("POST", "/api/sync",
+                            {"models_url": "data:application/json," + payload})
+            ctx.handle(h)
+        finally:
+            os.environ.clear()
+            os.environ.update(saved)
+        self.assertEqual(h.status, 200, h.wfile.getvalue().decode()[:200])
+        self.assertEqual(h.body_json()["diff"]["added"], ["oc-beam-free"])
+
     def test_restart_calls_hook(self):
         ctx = Ctx()
         h = FakeHandler("POST", "/api/restart")
