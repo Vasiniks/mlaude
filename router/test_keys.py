@@ -153,5 +153,80 @@ class KeysCliTests(unittest.TestCase):
         self.assertNotEqual(r.returncode, 0)
 
 
+class SlotsTests(unittest.TestCase):
+    def setUp(self):
+        self.saved = dict(os.environ)
+        for v in ("META_API_KEY", "OPENCODE_API_KEY", "ANTHROPIC_API_KEY"):
+            os.environ.pop(v, None)
+        self.tmp = tempfile.mkdtemp(prefix="mlaude-slots-")
+        os.environ["MLAUDE_KEYSLOTS_FILE"] = os.path.join(
+            self.tmp, "keyslots.json")
+        self.store = keys.FileStore(os.path.join(self.tmp, "secrets.json"))
+
+    def tearDown(self):
+        os.environ.clear()
+        os.environ.update(self.saved)
+
+    def test_add_list_delete_round_trip(self):
+        keys.add_slot("free2", "opencode", "slot-key-456")
+        shown = keys.list_slots()
+        self.assertEqual(shown["slots"]["free2"]["service"], "opencode")
+        self.assertEqual(shown["slots"]["free2"]["shown"], "slot…-456")
+        self.assertNotIn("slot-key-456", json.dumps(shown))
+        keys.delete_slot("free2")
+        self.assertEqual(keys.list_slots()["slots"], {})
+
+    def test_bad_name_service_key_rejected(self):
+        with self.assertRaises(ValueError):
+            keys.add_slot("opencode", "opencode", "x" * 10)
+        with self.assertRaises(ValueError):
+            keys.add_slot("BAD NAME!", "opencode", "x" * 10)
+        with self.assertRaises(ValueError):
+            keys.add_slot("free2", "nope", "x" * 10)
+        with self.assertRaises(ValueError):
+            keys.add_slot("free2", "opencode", "   ")
+        with self.assertRaises(ValueError):
+            keys.delete_slot("nope")
+
+    def test_activate_unknown_or_wrong_service_rejected(self):
+        keys.add_slot("free2", "opencode", "x" * 10)
+        with self.assertRaises(ValueError):
+            keys.set_active("opencode", "nope")
+        with self.assertRaises(ValueError):
+            keys.set_active("meta", "free2")
+        with self.assertRaises(ValueError):
+            keys.set_active("nope", None)
+
+    def test_active_slot_wins_over_primary(self):
+        keys.set_key("opencode", "primary-key-123", store=self.store)
+        keys.add_slot("free2", "opencode", "slot-key-456")
+        self.assertEqual(keys.get_key("opencode", store=self.store),
+                         "primary-key-123")
+        keys.set_active("opencode", "free2")
+        self.assertEqual(keys.get_key("opencode", store=self.store),
+                         "slot-key-456")
+        self.assertEqual(keys.active_slot_key("opencode"), "slot-key-456")
+        keys.set_active("opencode", None)
+        self.assertEqual(keys.get_key("opencode", store=self.store),
+                         "primary-key-123")
+        self.assertIsNone(keys.active_slot_key("opencode"))
+
+    def test_env_beats_active_slot(self):
+        os.environ["OPENCODE_API_KEY"] = "env-key-value"
+        keys.add_slot("free2", "opencode", "x" * 10)
+        keys.set_active("opencode", "free2")
+        self.assertEqual(keys.get_key("opencode", store=self.store),
+                         "env-key-value")
+
+    def test_delete_active_slot_falls_back_to_primary(self):
+        keys.set_key("opencode", "primary-key-123", store=self.store)
+        keys.add_slot("free2", "opencode", "x" * 10)
+        keys.set_active("opencode", "free2")
+        keys.delete_slot("free2")
+        self.assertEqual(keys.get_key("opencode", store=self.store),
+                         "primary-key-123")
+        self.assertEqual(keys.list_slots()["active"], {})
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

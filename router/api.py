@@ -159,9 +159,10 @@ def handle(handler, store=None, settings_path=None, ui_path=None,
         return True
 
     if bare == "/api/keys" and handler.command == "GET":
-        _json(handler, 200,
-              {s: keys.mask(keys.get_key(s, store=store))
-               for s in ("meta", "opencode", "anthropic")})
+        shown = {s: keys.mask(keys.get_key(s, store=store))
+                 for s in ("meta", "opencode", "anthropic")}
+        shown["slots"] = keys.list_slots()
+        _json(handler, 200, shown)
         return True
 
     if bare == "/api/keys" and handler.command == "POST":
@@ -180,6 +181,31 @@ def handle(handler, store=None, settings_path=None, ui_path=None,
             return True
         _json(handler, 200, {"service": service,
                              "shown": keys.mask(secret.strip()),
+                             "restart_required": True})
+        return True
+
+    if bare == "/api/slots" and handler.command == "POST":
+        body, err = _read_json(handler)
+        if err:
+            _err(handler, 400, err)
+            return True
+        action = body.get("action")
+        try:
+            if action == "add":
+                keys.add_slot(body.get("name"), body.get("service"),
+                              body.get("key"))
+            elif action == "delete":
+                keys.delete_slot(body.get("name"))
+            elif action == "activate":
+                keys.set_active(body.get("service"), body.get("name"))
+            else:
+                _err(handler, 400,
+                     "unknown slots action (add|delete|activate)")
+                return True
+        except ValueError as e:
+            _err(handler, 400, str(e))
+            return True
+        _json(handler, 200, {"slots": keys.list_slots(),
                              "restart_required": True})
         return True
 
@@ -253,7 +279,7 @@ def handle(handler, store=None, settings_path=None, ui_path=None,
 
     if bare.startswith("/api/"):
         if bare in ("/api/status", "/api/models", "/api/log",
-                    "/api/sync", "/api/restart"):
+                    "/api/sync", "/api/restart", "/api/slots"):
             _err(handler, 405, "method not allowed")
         elif handler.command in ("GET", "HEAD", "POST"):
             _err(handler, 404, "unknown API route", etype="not_found_error")

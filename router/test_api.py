@@ -221,6 +221,66 @@ class SyncRestartTests(unittest.TestCase):
         self.assertEqual(h.status, 200)
         self.assertEqual(ctx.calls, ["restart"])
 
+
+class SlotsApiTests(unittest.TestCase):
+    def setUp(self):
+        self.saved = dict(os.environ)
+        for v in ("META_API_KEY", "OPENCODE_API_KEY", "ANTHROPIC_API_KEY"):
+            os.environ.pop(v, None)
+        self.tmp = tempfile.mkdtemp(prefix="mlaude-slots-api-")
+        os.environ["MLAUDE_KEYSLOTS_FILE"] = os.path.join(
+            self.tmp, "keyslots.json")
+
+    def tearDown(self):
+        os.environ.clear()
+        os.environ.update(self.saved)
+
+    def post_slots(self, ctx, payload):
+        h = FakeHandler("POST", "/api/slots", payload)
+        ctx.handle(h)
+        return h
+
+    def test_add_activate_delete(self):
+        ctx = Ctx()
+        h = self.post_slots(ctx, {"action": "add", "name": "free2",
+                                  "service": "opencode",
+                                  "key": "slot-key-456"})
+        self.assertEqual(h.status, 200, h.wfile.getvalue().decode()[:200])
+        body = h.body_json()
+        self.assertEqual(body["slots"]["slots"]["free2"]["shown"],
+                         "slot…-456")
+        self.assertTrue(body["restart_required"])
+        h = self.post_slots(ctx, {"action": "activate",
+                                  "service": "opencode", "name": "free2"})
+        self.assertEqual(h.status, 200)
+        h = FakeHandler("GET", "/api/keys")
+        ctx.handle(h)
+        body = h.body_json()
+        self.assertEqual(body["slots"]["active"], {"opencode": "free2"})
+        self.assertEqual(body["opencode"], "slot…-456")
+        h = self.post_slots(ctx, {"action": "delete", "name": "free2"})
+        self.assertEqual(h.status, 200)
+        self.assertEqual(h.body_json()["slots"]["slots"], {})
+        self.assertEqual(h.body_json()["slots"]["active"], {})
+
+    def test_bad_slot_requests_400(self):
+        ctx = Ctx()
+        for payload in ({"action": "frobnicate"},
+                        {"action": "add", "name": "free2",
+                         "service": "opencode"},
+                        {"action": "activate", "service": "opencode",
+                         "name": "nope"},
+                        {"action": "delete"}):
+            h = self.post_slots(ctx, payload)
+            self.assertEqual(h.status, 400,
+                             (payload, h.wfile.getvalue().decode()[:200]))
+
+    def test_slots_wrong_method_405(self):
+        ctx = Ctx()
+        h = FakeHandler("GET", "/api/slots")
+        ctx.handle(h)
+        self.assertEqual(h.status, 405)
+
     def test_unknown_api_404(self):
         ctx = Ctx()
         h = FakeHandler("GET", "/api/nope")

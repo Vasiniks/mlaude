@@ -8,7 +8,7 @@ A tiny localhost app that lets **one Claude Code session** use three backends:
 - `oc-*` → OpenCode (`opencode.ai`, OpenAI-compatible chat, prefix stripped upstream)
 - everything else → Anthropic (`api.anthropic.com`, byte-for-byte pass-through, streamed)
 
-Standard library Python only (tray icon needs `pystray`+`pillow`, best-effort). A web dashboard on the same port (`/ui`) manages keys, connections, models, sync, and logs.
+Standard library Python only (tray icon needs `pystray`+`pillow`, best-effort). A web dashboard on the same port (`/ui`) manages keys, connections, models, sync, and logs. The Keys pane also holds named extra key slots (e.g. a second OpenCode key): add one, activate it, restart the router, and that slot serves its backend until you switch back to primary.
 
 Standard library Python only. No Docker, no npm, no pip packages.
 Verified live on macOS: `muse-spark-1.3` returns `200` with a valid Anthropic-shaped message.

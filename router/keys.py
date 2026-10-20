@@ -10,8 +10,10 @@ writes go to the platform store: macOS Keychain, Windows User env
 import getpass
 import json
 import os
+import re
 import subprocess
 import sys
+import tempfile
 
 SERVICES = {
     "meta": {"keychain": "meta-model-api",
@@ -135,11 +137,18 @@ def _platform_store():
 
 
 def get_key(service, store=None):
-    """Return the secret for `service`, or None. Env var wins over the store."""
+    """Return the secret for `service`, or None.
+
+    Precedence: environment, then the active custom slot (if any),
+    then the primary platform store.
+    """
     svc = _service(service)
     env_value = os.environ.get(svc["env"], "").strip()
     if env_value:
         return env_value
+    slot_key = active_slot_key(service)
+    if slot_key:
+        return slot_key
     store = store if store is not None else _platform_store()
     value = store.get(svc["keychain"])
     return value.strip() if isinstance(value, str) and value.strip() else None
@@ -158,6 +167,132 @@ def set_key(service, value, store=None):
 def key_present(service, store=None):
     """True when a non-empty secret resolves (env or store)."""
     return get_key(service, store=store) is not None
+
+
+# ---------------------------------------------------------- custom slots
+# Named extra keys ("free2", "work-paid", ...) beyond the three primary
+# services, added through the dashboard. One slot per service may be
+# active; the router then uses it instead of the primary until restart.
+# Registry + secrets live in one 600 file (override: MLAUDE_KEYSLOTS_FILE).
+
+SLOT_NAME = re.compile(r"^[a-z0-9][a-z0-9-]{0,31}$")
+
+DEFAULT_KEYSLOTS_FILE = os.path.join(os.path.expanduser("~"),
+                                     ".config", "mlaude", "keyslots.json")
+
+
+def _slots_path(path=None):
+    return path or os.environ.get("MLAUDE_KEYSLOTS_FILE") \
+        or DEFAULT_KEYSLOTS_FILE
+
+
+def _read_slots(path=None):
+    try:
+        with open(_slots_path(path), encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return {"slots": {}, "active": {}}
+    if not isinstance(data, dict):
+        return {"slots": {}, "active": {}}
+    slots = data.get("slots")
+    active = data.get("active")
+    return {"slots": slots if isinstance(slots, dict) else {},
+            "active": active if isinstance(active, dict) else {}}
+
+
+def _write_slots(state, path=None):
+    target = _slots_path(path)
+    parent = os.path.dirname(target)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=parent or None, suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(state, f, indent=2)
+        os.replace(tmp, target)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+    os.chmod(target, 0o600)
+
+
+def _check_slot_name(name):
+    if not isinstance(name, str) or not SLOT_NAME.match(name) \
+            or name in SERVICES:
+        raise ValueError("bad slot name %r (a-z, 0-9, dash; "
+                         "not a service name)" % (name,))
+
+
+def add_slot(name, service, key, slots_path=None):
+    """Register a named extra key for `service`."""
+    _check_slot_name(name)
+    _service(service)
+    key = key.strip() if isinstance(key, str) else ""
+    if not key:
+        raise ValueError("empty key for slot %r; aborting" % name)
+    state = _read_slots(slots_path)
+    state["slots"][name] = {"service": service, "key": key}
+    _write_slots(state, slots_path)
+
+
+def delete_slot(name, slots_path=None):
+    """Remove a slot (active refs to it fall back to primary)."""
+    state = _read_slots(slots_path)
+    if name not in state["slots"]:
+        raise ValueError("unknown slot: %r" % (name,))
+    del state["slots"][name]
+    state["active"] = {s: n for s, n in state["active"].items()
+                       if n != name}
+    _write_slots(state, slots_path)
+
+
+def set_active(service, name, slots_path=None):
+    """Make `name` the live key for `service` (None/"" = primary)."""
+    _service(service)
+    state = _read_slots(slots_path)
+    if name is None or (isinstance(name, str) and not name.strip()):
+        state["active"].pop(service, None)
+    else:
+        slot = state["slots"].get(name)
+        if slot is None:
+            raise ValueError("unknown slot: %r" % (name,))
+        if slot.get("service") != service:
+            raise ValueError("slot %r serves %r, not %r"
+                             % (name, slot.get("service"), service))
+        state["active"][service] = name
+    _write_slots(state, slots_path)
+
+
+def active_slot_key(service, slots_path=None):
+    """Key from the active custom slot, or None (primary applies)."""
+    _service(service)
+    state = _read_slots(slots_path)
+    name = state["active"].get(service)
+    if not name:
+        return None
+    slot = state["slots"].get(name)
+    if not isinstance(slot, dict) or slot.get("service") != service:
+        return None
+    key = slot.get("key")
+    return key.strip() if isinstance(key, str) and key.strip() else None
+
+
+def list_slots(slots_path=None):
+    """Masked slot inventory (never plaintext) + active map."""
+    state = _read_slots(slots_path)
+    out = {}
+    for name in sorted(state["slots"]):
+        slot = state["slots"][name]
+        if not isinstance(slot, dict):
+            continue
+        out[name] = {"service": slot.get("service"),
+                     "shown": mask(slot.get("key"))}
+    active = {s: n for s, n in state["active"].items()
+              if n in state["slots"]}
+    return {"slots": out, "active": active}
 
 
 def _resolve_store(store_file):
@@ -186,6 +321,12 @@ def main(argv=None):
                 print("%s: missing" % name)
             else:
                 print("%s: present (%s)" % (name, shown))
+        found = list_slots()
+        for name, slot in found["slots"].items():
+            mark = " [active]" if found["active"].get(
+                slot["service"]) == name else ""
+            print("slot %s (%s): present (%s)%s"
+                  % (name, slot["service"], slot["shown"], mark))
         return 0
     if args.cmd == "set":
         try:

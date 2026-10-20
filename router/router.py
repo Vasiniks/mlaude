@@ -214,7 +214,8 @@ class Router(BaseHTTPRequestHandler):
                 body = json.dumps(data, ensure_ascii=False, separators=(",", ":")).encode()
             headers.pop("x-api-key", None)
             try:
-                headers["authorization"] = "Bearer " + meta_key()
+                headers["authorization"] = "Bearer " + (
+                    keys.active_slot_key("meta") or meta_key())
             except (subprocess.CalledProcessError, OSError):
                 self.send_error(502, "Meta API key not found: set META_API_KEY "
                                      "or store it in Keychain (service %s)" % KEYCHAIN_SERVICE)
