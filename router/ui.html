@@ -6,223 +6,870 @@
 <title>mlaude Dashboard</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect width='24' height='24' rx='5' fill='white'/><path d='M20.08 13.21C20.19 13.35 20.57 13.75 20.77 14.03C20.97 14.32 21.15 14.61 21.3 14.9C21.45 15.19 21.58 15.49 21.67 15.79C21.76 16.08 21.83 16.38 21.87 16.67C21.9 16.96 21.91 17.25 21.89 17.53C21.87 17.81 21.82 18.08 21.74 18.34C21.66 18.6 21.56 18.85 21.42 19.08C21.29 19.32 21.14 19.54 20.96 19.74C20.78 19.94 20.57 20.12 20.34 20.29C20.12 20.45 19.87 20.59 19.6 20.71C19.34 20.83 19.05 20.93 18.75 21C18.45 21.07 18.14 21.12 17.81 21.15C17.49 21.17 17.15 21.16 16.8 21.13C16.46 21.1 16.1 21.05 15.74 20.96C15.39 20.88 15.03 20.77 14.67 20.64C14.31 20.5 13.94 20.34 13.59 20.15C13.23 19.96 12.88 19.75 12.54 19.51C12.19 19.28 11.85 19.02 11.53 18.74C11.2 18.46 10.89 18.15 10.59 17.83C10.29 17.51 10 17.17 9.74 16.82C9.47 16.46 9.21 16.08 8.99 15.71C8.76 15.34 8.49 14.78 8.39 14.6M7.54 6.94C7.6 6.78 7.77 6.25 7.91 5.93C8.05 5.61 8.21 5.31 8.39 5.04C8.57 4.76 8.77 4.5 8.97 4.28C9.18 4.05 9.41 3.84 9.64 3.67C9.87 3.49 10.12 3.34 10.37 3.22C10.63 3.1 10.89 3 11.15 2.94C11.41 2.88 11.69 2.84 11.95 2.84C12.22 2.84 12.49 2.86 12.75 2.92C13.02 2.98 13.28 3.06 13.54 3.18C13.79 3.29 14.04 3.43 14.28 3.6C14.51 3.77 14.74 3.97 14.95 4.2C15.16 4.42 15.36 4.67 15.55 4.94C15.73 5.21 15.89 5.51 16.04 5.82C16.19 6.13 16.32 6.47 16.42 6.82C16.53 7.17 16.61 7.54 16.68 7.92C16.74 8.3 16.78 8.69 16.79 9.09C16.81 9.49 16.8 9.91 16.77 10.32C16.74 10.74 16.68 11.16 16.6 11.58C16.52 12.01 16.42 12.43 16.29 12.85C16.16 13.27 16.01 13.69 15.84 14.1C15.66 14.5 15.46 14.92 15.25 15.3C15.04 15.68 14.7 16.19 14.59 16.37M8.38 20.93C8.2 20.97 7.67 21.09 7.32 21.12C6.98 21.16 6.63 21.17 6.31 21.15C5.98 21.14 5.66 21.09 5.35 21.03C5.05 20.96 4.76 20.87 4.49 20.75C4.22 20.64 3.97 20.5 3.74 20.34C3.51 20.19 3.3 20.01 3.11 19.81C2.92 19.61 2.76 19.39 2.62 19.17C2.49 18.94 2.37 18.69 2.29 18.43C2.21 18.17 2.15 17.9 2.12 17.63C2.09 17.35 2.09 17.06 2.12 16.77C2.15 16.48 2.21 16.18 2.3 15.89C2.38 15.6 2.5 15.3 2.64 15C2.79 14.71 2.96 14.42 3.16 14.13C3.36 13.85 3.58 13.57 3.83 13.31C4.08 13.04 4.36 12.78 4.66 12.54C4.95 12.29 5.28 12.06 5.62 11.85C5.96 11.63 6.32 11.43 6.69 11.25C7.07 11.07 7.46 10.91 7.87 10.77C8.27 10.63 8.7 10.5 9.12 10.4C9.55 10.31 9.99 10.23 10.43 10.17C10.87 10.12 11.33 10.09 11.76 10.08C12.2 10.07 12.81 10.11 13.02 10.12' fill='none' stroke='%231d1d1f' stroke-width='2' stroke-linecap='round'/></svg>">
 <style>
+/* Layout: macOS-style split view. A source list on the left, one pane at a time on the right
+   (deep links: #overview #keys #connections #models #log). Pane content is built from Control
+   Center tiles: a router tile with a status ring and round restart button, stat tiles, list
+   widgets, edit sheets, and a top HUD toast. Phones fold the source list into a top bar with a
+   scrolling tab strip; sheets become bottom sheets. */
 :root {
-  --paper: #f2f5f8; --card: #ffffff; --ink: #16212d; --muted: #5b6b7c;
-  --line: #d9e1e9; --accent: #2456e6; --accent-ink: #ffffff;
-  --ok: #1d7f43; --bad: #b3261e;
+  --bg: #eef2f6;          /* window ground */
+  --side: #e5eaf0;        /* source list */
+  --card: #ffffff;        /* tiles */
+  --raise: #f3f6f9;       /* wells inside tiles */
+  --ink: #16212d;
+  --muted: #5b6b7c;
+  --faint: #8592a1;
+  --line: #dde4eb;
+  --accent: #2456e6; --accent-ink: #ffffff; --accent-soft: #e5ecfd;
+  --ok: #1d7f43;  --ok-soft: #e2f2e8;
+  --warn: #965800; --warn-soft: #fbefd9;
+  --bad: #b3261e; --bad-soft: #fbe5e3;
+  --s-muse: #6250d6; --s-oc: #009a82; --s-other: #d0661c;   /* model-mix series (CVD-checked) */
+  --knob: #ffffff;
+  --hud: rgba(18, 26, 36, 0.94); --hud-ink: #f3f6f9;
+  --scrim: rgba(8, 12, 18, 0.38);
+  --shadow: 0 1px 1px rgba(22, 33, 45, 0.04), 0 4px 14px rgba(22, 33, 45, 0.05);
+  --shadow-pop: 0 24px 60px rgba(10, 16, 24, 0.28);
+  --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  --display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+  --round: ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
-  :root {
-    --paper: #0d1218; --card: #151d27; --ink: #e7edf4; --muted: #93a3b5;
-    --line: #26313e; --accent: #7d9bff; --accent-ink: #0d1218;
-    --ok: #5fce8a; --bad: #ff8a7a;
+  :root:not([data-theme="light"]) {
+    --bg: #0b1016; --side: #10161e; --card: #151d27; --raise: #1b2430;
+    --ink: #e7edf4; --muted: #93a3b5; --faint: #687788; --line: #253040;
+    --accent: #7d9bff; --accent-ink: #0b1016; --accent-soft: #1b2645;
+    --ok: #5fce8a; --ok-soft: #12291c; --warn: #f0b45a; --warn-soft: #2c2213; --bad: #ff8a7a; --bad-soft: #35191a;
+    --s-muse: #7f6fec; --s-oc: #11a283; --s-other: #dc7329;
+    --knob: #e7edf4; --hud: rgba(44, 55, 69, 0.95); --hud-ink: #eef3f8; --scrim: rgba(0, 0, 0, 0.5);
+    --shadow: 0 1px 1px rgba(0, 0, 0, 0.3), 0 4px 14px rgba(0, 0, 0, 0.22);
+    --shadow-pop: 0 24px 60px rgba(0, 0, 0, 0.55);
     color-scheme: dark;
   }
 }
-body {
-  background: var(--paper); color: var(--ink);
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
-  margin: 0 auto; max-width: 920px;
-  padding: 28px max(16px, env(safe-area-inset-left, 0px)) 64px
-    max(16px, env(safe-area-inset-right, 0px));
+:root[data-theme="dark"] {
+  --bg: #0b1016; --side: #10161e; --card: #151d27; --raise: #1b2430;
+  --ink: #e7edf4; --muted: #93a3b5; --faint: #687788; --line: #253040;
+  --accent: #7d9bff; --accent-ink: #0b1016; --accent-soft: #1b2645;
+  --ok: #5fce8a; --ok-soft: #12291c; --warn: #f0b45a; --warn-soft: #2c2213; --bad: #ff8a7a; --bad-soft: #35191a;
+  --s-muse: #7f6fec; --s-oc: #11a283; --s-other: #dc7329;
+  --knob: #e7edf4; --hud: rgba(44, 55, 69, 0.95); --hud-ink: #eef3f8; --scrim: rgba(0, 0, 0, 0.5);
+  --shadow: 0 1px 1px rgba(0, 0, 0, 0.3), 0 4px 14px rgba(0, 0, 0, 0.22);
+  --shadow-pop: 0 24px 60px rgba(0, 0, 0, 0.55);
+  color-scheme: dark;
 }
-header { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
-header svg { width: 34px; height: 34px; }
-header h1 { font-size: 24px; margin: 0; letter-spacing: -0.01em; }
-.pill { font-family: ui-monospace, monospace; font-size: 12px; border: 1px solid var(--line);
-  border-radius: 999px; padding: 4px 12px; color: var(--muted); margin-left: auto; }
-.pill.on { color: var(--ok); border-color: var(--ok); }
-.sub { color: var(--muted); font-size: 14px; margin: 0 0 20px; }
-.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
-.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; min-width: 0; }
-.card.full { grid-column: 1 / -1; }
-.card h2 { font-size: 15px; margin: 0 0 12px; }
-.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; }
-.tile .k { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; }
-.tile .v { font-size: 17px; margin-top: 2px; }
-.mono { font-family: ui-monospace, monospace; }
-.row { display: flex; gap: 8px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
-label { font-size: 13px; color: var(--muted); display: block; margin-top: 10px; }
-input[type=text], input[type=password] {
-  font: inherit; font-size: 14px; color: var(--ink);
-  background: var(--paper); border: 1px solid var(--line); border-radius: 8px;
-  padding: 7px 10px; width: 100%; box-sizing: border-box; margin-top: 4px;
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 var(--sans); -webkit-font-smoothing: antialiased; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
+.mono { font-family: var(--mono); font-size: 0.93em; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------- split view ---------- */
+.app { display: grid; grid-template-columns: 232px minmax(0, 1fr); min-height: 100vh; }
+.side {
+  position: sticky; top: 0; height: 100vh; height: 100dvh;
+  display: grid; grid-template-rows: auto auto 1fr auto; grid-template-areas: "brand" "nav" "." "foot";
+  background: var(--side); border-right: 1px solid var(--line);
+  padding-block: 20px 18px; padding-left: max(14px, env(safe-area-inset-left, 0px)); padding-right: 12px;
 }
-button { font: inherit; font-size: 13px; font-weight: 600; border: 1px solid var(--line);
-  background: var(--card); color: var(--ink); border-radius: 8px; padding: 7px 13px; cursor: pointer; }
-button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-button:disabled { opacity: 0.5; cursor: default; }
+.brand { grid-area: brand; display: flex; align-items: center; gap: 10px; padding: 0 6px 18px; }
+.glyph { width: 30px; height: 30px; color: var(--accent); flex: none; }
+.brand-name { font: 650 16px/1.2 var(--display); letter-spacing: -0.01em; }
+.brand-sub { color: var(--muted); font-size: 11.5px; }
+
+.nav { grid-area: nav; display: flex; flex-direction: column; gap: 2px; }
+.nav a { display: flex; align-items: center; gap: 10px; padding: 7px 9px; border-radius: 8px; color: var(--ink); text-decoration: none; font-size: 13.5px; white-space: nowrap; }
+.nav a:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); }
+.nav a svg { width: 16px; height: 16px; color: var(--accent); flex: none; }
+.nav a .count { margin-left: auto; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.nav a[aria-current="page"] { background: var(--accent); color: var(--accent-ink); }
+.nav a[aria-current="page"] svg, .nav a[aria-current="page"] .count { color: var(--accent-ink); }
+
+.side-foot { grid-area: foot; display: grid; gap: 10px; padding: 0 6px; }
+.state { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); flex: none; }
+.state[data-s="up"] .dot { background: var(--ok); }
+.state[data-s="restarting"] .dot { background: var(--warn); }
+.state[data-s="down"] .dot { background: var(--bad); }
+.sample { font-size: 11.5px; color: var(--muted); line-height: 1.4; margin: 0; }
+
+.main { min-width: 0; container-type: inline-size; padding-block: 28px 72px; padding-left: 36px; padding-right: max(36px, env(safe-area-inset-right, 0px)); }
+.pane { max-width: 980px; display: grid; gap: 14px; }
+.pane-head { margin-bottom: 4px; }
+.pane-head h1 { font: 700 26px/1.15 var(--display); letter-spacing: -0.02em; margin: 0 0 6px; text-wrap: balance; }
+.pane-head p { margin: 0; color: var(--muted); max-width: 64ch; }
+.pane-head code { font-family: var(--mono); font-size: 0.92em; }
+.foot-note { color: var(--muted); font-size: 12.5px; margin: 0 4px; max-width: 70ch; }
+.prefix { font-family: var(--mono); font-size: 12px; background: var(--raise); border-radius: 5px; padding: 1px 6px; white-space: nowrap; }
+.pane-head .prefix { background: color-mix(in srgb, var(--ink) 7%, transparent); }
+
+/* ---------- controls ---------- */
+.pill { font: 600 13px/1 var(--sans); color: var(--ink); background: var(--raise); border: 0; border-radius: 999px; padding: 8px 14px; cursor: pointer; white-space: nowrap; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+.pill:hover { background-color: color-mix(in srgb, var(--ink) 9%, var(--raise)); }
+.pill.primary { background: var(--accent); color: var(--accent-ink); }
+.pill.primary:hover { background-color: color-mix(in srgb, var(--accent) 88%, var(--card)); }
+.pill.quiet { background: transparent; color: var(--accent); padding-inline: 8px; }
+.pill:disabled { opacity: 0.45; cursor: default; }
+.side .pill { background: var(--card); box-shadow: var(--shadow); justify-content: center; }
+.side .pill.attn { background: var(--accent); color: var(--accent-ink); }
+select.pill { appearance: none; -webkit-appearance: none; padding-right: 28px; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: right 14px center, right 9px center; background-size: 5px 5px; background-repeat: no-repeat; }
+.switch { appearance: none; -webkit-appearance: none; width: 44px; height: 26px; border-radius: 13px; background: var(--line); position: relative; cursor: pointer; flex: none; margin: 0; transition: background .2s; }
+.switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 22px; height: 22px; border-radius: 50%; background: var(--knob); box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); transition: transform .22s cubic-bezier(.3, 1.3, .5, 1); }
+.switch:checked { background: var(--ok); }
+.switch:checked::after { transform: translateX(18px); }
+.badge { font-size: 11.5px; font-weight: 600; padding: 3px 8px; border-radius: 999px; background: var(--raise); color: var(--muted); white-space: nowrap; }
+.badge.ok { background: var(--ok-soft); color: var(--ok); }
+.badge.bad { background: var(--bad-soft); color: var(--bad); }
+.badge.warn { background: var(--warn-soft); color: var(--warn); }
+
+/* ---------- banner ---------- */
+.banner { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; max-width: 980px; margin-bottom: 18px; background: var(--warn-soft); border-radius: 14px; padding: 10px 12px 10px 16px; }
+.banner p { margin: 0; flex: 1 1 260px; }
+.banner strong { color: var(--warn); }
+
+/* ---------- tiles ---------- */
+.bento { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.tile { background: var(--card); border-radius: 18px; padding: 16px 18px; box-shadow: var(--shadow); min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.w4 { grid-column: 1 / -1; }
+.lbl { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.lbl svg { width: 15px; height: 15px; color: var(--accent); flex: none; }
+.head { display: flex; align-items: center; gap: 4px 10px; flex-wrap: wrap; }
+.head h2 { margin: 0; font: 650 16px/1.2 var(--display); letter-spacing: -0.01em; }
+.head .sub { color: var(--muted); font-size: 12.5px; }
+.head .end { margin-left: auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.big { font: 650 28px/1.05 var(--display); letter-spacing: -0.025em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.big.host { font-size: 20px; letter-spacing: -0.015em; }
+.big .of { color: var(--faint); }
+.foot { margin-top: auto; font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+
+/* router tile */
+.router { grid-column: span 2; grid-row: span 2; }
+.r-main { display: flex; align-items: center; gap: 16px; margin-top: 2px; }
+.ring { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; background: var(--ok-soft); color: var(--ok); flex: none; position: relative; }
+.ring svg { width: 32px; height: 32px; }
+.ring::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid currentColor; opacity: 0.25; }
+.router[data-s="restarting"] .ring { background: var(--warn-soft); color: var(--warn); }
+.router[data-s="restarting"] .ring::after { opacity: 1; border-color: currentColor transparent transparent transparent; animation: spin .9s linear infinite; }
+.router[data-s="down"] .ring { background: var(--bad-soft); color: var(--bad); }
+@keyframes spin { to { transform: rotate(360deg); } }
+.r-port { font: 500 15px/1.3 var(--mono); color: var(--muted); margin-top: 4px; }
+.routes { display: grid; gap: 7px; margin: 2px 0 0; padding: 12px 14px; background: var(--raise); border-radius: 12px; list-style: none; font-size: 13px; }
+.routes li { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.routes code { font: 12px var(--mono); white-space: nowrap; }
+.routes .to { color: var(--muted); margin-left: auto; text-align: right; display: flex; align-items: center; justify-content: flex-end; gap: 6px; flex-wrap: wrap; min-width: 0; }
+.r-act { margin-top: auto; display: flex; align-items: center; gap: 12px; }
+.roundbtn { width: 46px; height: 46px; border-radius: 50%; border: 0; background: var(--raise); color: var(--ink); display: grid; place-items: center; cursor: pointer; flex: none; transition: background .2s, color .2s; }
+.roundbtn:hover { background: color-mix(in srgb, var(--ink) 9%, var(--raise)); }
+.roundbtn svg { width: 20px; height: 20px; }
+.roundbtn:disabled { opacity: 0.45; cursor: default; }
+.router.pending .roundbtn { background: var(--accent); color: var(--accent-ink); }
+.r-act .t1 { font-weight: 600; }
+.r-act .t2 { font-size: 12.5px; color: var(--muted); }
+.router.pending .r-act .t2 { color: var(--warn); }
+
+/* stat tiles */
+.kdots { display: flex; gap: 4px 10px; flex-wrap: wrap; }
+.kdot { display: inline-flex; align-items: center; gap: 5px; }
+.kdot i { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
+.kdot.on i { background: var(--ok); }
+.kdot.off i { background: var(--bad); }
+.meter { display: flex; gap: 2px; height: 8px; }
+.meter > i, .meter > button { display: block; height: 100%; border-radius: 4px; min-width: 6px; border: 0; padding: 0; }
+.meter.lg { height: 16px; position: relative; }
+.meter.lg > button { cursor: pointer; border-radius: 5px; }
+.meter.lg > button:hover { filter: brightness(1.08); }
+.legend-mini { display: flex; flex-wrap: wrap; gap: 2px 10px; margin-top: 6px; font-variant-numeric: tabular-nums; }
+.legend-mini span { display: inline-flex; align-items: center; gap: 5px; }
+.sq { display: inline-block; width: 8px; height: 8px; border-radius: 2px; flex: none; }
+.c-muse { background: var(--s-muse); } .c-oc { background: var(--s-oc); } .c-other { background: var(--s-other); }
+.tip { position: absolute; bottom: calc(100% + 8px); transform: translateX(-50%); background: var(--hud); color: var(--hud-ink); font-size: 12px; padding: 6px 9px; border-radius: 8px; white-space: nowrap; pointer-events: none; z-index: 3; }
+
+/* list widget (keys) */
+.list { display: grid; }
+.lrow { display: flex; align-items: center; gap: 12px; padding: 12px 0; min-width: 0; }
+.lrow + .lrow { border-top: 1px solid var(--line); }
+.av { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; font: 700 15px/1 var(--round); color: var(--ink); flex: none; background: var(--raise); }
+.av.muse { background: color-mix(in srgb, var(--s-muse) 18%, var(--card)); }
+.av.oc { background: color-mix(in srgb, var(--s-oc) 18%, var(--card)); }
+.av.other { background: color-mix(in srgb, var(--s-other) 18%, var(--card)); }
+.lrow .txt { flex: 1; min-width: 0; }
+.lrow .n { font-weight: 600; }
+.lrow .s { font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+.lrow .acts { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+
+/* connection widget */
+.kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 10px 16px; margin: 0; font-size: 13px; align-items: baseline; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; font: 12.5px/1.45 var(--mono); overflow-wrap: anywhere; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.resolved { font: 12px/1.7 var(--mono); color: var(--muted); background: var(--raise); border-radius: 12px; padding: 10px 14px; overflow-wrap: anywhere; margin: 0; }
+.resolved b { color: var(--ink); font-weight: 500; }
+.resolved span { color: var(--faint); font-family: var(--sans); }
+
+/* models bento */
+.mgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.55fr); gap: 18px; align-items: start; }
+.mix { display: grid; gap: 14px; }
+.legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.legend button { width: 100%; display: flex; align-items: center; gap: 10px; font: inherit; color: var(--ink); background: transparent; border: 0; border-radius: 10px; padding: 7px 8px; cursor: pointer; text-align: left; }
+.legend button:hover { background: var(--raise); }
+.legend button[aria-pressed="true"] { background: var(--accent-soft); }
+.legend .sq { width: 10px; height: 10px; border-radius: 3px; }
+.legend .nm { font-weight: 600; }
+.legend .up { color: var(--muted); font-size: 12.5px; }
+.legend .ct { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 600; }
+.syncbox { background: var(--raise); border-radius: 14px; padding: 12px 14px; display: grid; gap: 10px; }
+.swrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; cursor: pointer; }
+.swrow small { display: block; color: var(--muted); font-size: 12px; }
+.sync-when { font-size: 12px; color: var(--muted); text-align: center; }
+.diff { font-size: 12.5px; display: grid; gap: 3px; border-top: 1px solid var(--line); padding-top: 10px; }
+.diff b { font-weight: 600; }
+.diff code { font: 12px var(--mono); overflow-wrap: anywhere; }
+.diff .add { color: var(--ok); } .diff .del { color: var(--bad); }
+.tablewrap { overflow-x: auto; background: var(--raise); border-radius: 14px; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
-td, th { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: left; }
-th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
-.scroll { overflow-x: auto; }
-.log { background: var(--paper); border-radius: 8px; padding: 10px 12px;
-  font-family: ui-monospace, monospace; font-size: 12px; line-height: 1.65;
-  white-space: pre-wrap; color: var(--muted); max-height: 220px; overflow-y: auto; }
-.hint { font-size: 12.5px; color: var(--muted); margin: 8px 0 0; }
-.err { color: var(--bad); font-size: 13px; }
-#toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
-  background: var(--ink); color: var(--paper); font-size: 13px;
-  padding: 9px 16px; border-radius: 999px; display: none; }
+th { text-align: left; font-size: 12px; font-weight: 500; color: var(--muted); padding: 10px 14px 6px; white-space: nowrap; }
+td { padding: 8px 14px; border-top: 1px solid var(--line); white-space: nowrap; }
+td.m { font: 12.5px var(--mono); }
+td.m .sq { margin-right: 8px; vertical-align: 1px; }
+td.l, td.empty { color: var(--muted); white-space: normal; min-width: 120px; }
+.lb { display: none; }
+
+/* log */
+.toolbar { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; }
+.toolbar .swlabel { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; cursor: pointer; }
+.toolbar .spacer { flex: 1; }
+.log { margin: 0; padding: 10px 0; background: var(--raise); border-radius: 14px; font: 12px/1.7 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; overflow-y: auto; color: var(--ink); }
+.log.peek { max-height: 236px; }
+.log.full { max-height: min(64vh, 620px); }
+.ln { display: block; padding: 0 14px; }
+.ln:hover { background: color-mix(in srgb, var(--ink) 4%, transparent); }
+.ln .t { color: var(--faint); }
+.ln .meth { color: var(--muted); }
+.ln .code { font-weight: 650; }
+.ln .c2 { color: var(--ok); } .ln .c4 { color: var(--warn); } .ln .c5 { color: var(--bad); }
+.ln.sub { color: var(--muted); padding-left: 30px; }
+.ln.err { color: var(--bad); }
+
+/* ---------- sheets ---------- */
+dialog { border: 0; padding: 0; background: var(--card); color: var(--ink); border-radius: 22px; width: min(480px, calc(100vw - 32px)); max-width: none; box-shadow: var(--shadow-pop); }
+dialog::backdrop { background: var(--scrim, rgba(8, 12, 18, 0.38)); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
+dialog[open] { animation: sheet .26s cubic-bezier(.2, .9, .3, 1); }
+@keyframes sheet { from { transform: translateY(16px) scale(.98); opacity: 0; } }
+.sheet { display: grid; gap: 14px; padding: 20px 22px 22px; }
+.sheet h2 { margin: 0; font: 650 19px/1.2 var(--display); letter-spacing: -0.015em; }
+.sheet p { margin: 0; color: var(--muted); font-size: 13px; }
+.field { display: grid; gap: 5px; font-size: 13px; font-weight: 500; }
+.field input { font: 14px/1.3 var(--sans); color: var(--ink); background: var(--raise); border: 1px solid transparent; border-radius: 11px; padding: 10px 12px; width: 100%; min-width: 0; }
+.field input.mono { font: 13px/1.3 var(--mono); }
+.field input:focus { outline: none; border-color: var(--accent); background: var(--card); box-shadow: 0 0 0 3px var(--accent-soft); }
+.field .hint { font-weight: 400; color: var(--muted); font-size: 12px; }
+.err { color: var(--bad); font-size: 12.5px; margin: 0; }
+.sheet .acts { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.sheet .acts .left { margin-right: auto; }
+
+/* ---------- HUD toast ---------- */
+.hud { position: fixed; top: calc(14px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); z-index: 50; max-width: calc(100vw - 32px); background: var(--hud); color: var(--hud-ink); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); border-radius: 999px; padding: 10px 18px 10px 12px; display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 500; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25); animation: drop .3s cubic-bezier(.2, 1.2, .4, 1); }
+.hud i { width: 22px; height: 22px; border-radius: 50%; background: var(--ok); flex: none; display: grid; place-items: center; }
+.hud[data-kind="bad"] i { background: var(--bad); }
+.hud i svg { width: 12px; height: 12px; color: var(--card); }
+@keyframes drop { from { transform: translate(-50%, -20px); opacity: 0; } }
+
+/* ---------- pane width (container) ---------- */
+@container (max-width: 900px) {
+  .bento { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .router { grid-column: 1 / -1; grid-row: auto; }
+}
+@container (max-width: 760px) {
+  .mgrid { grid-template-columns: minmax(0, 1fr); }
+}
+@container (max-width: 520px) {
+  th:nth-child(2), td.l { display: none; }
+  td.m { white-space: normal; overflow-wrap: anywhere; }
+  .lb { display: block; font: 12px/1.35 var(--sans); color: var(--muted); margin: 2px 0 0 16px; }
+  .lrow { flex-wrap: wrap; }
+  .lrow .txt { flex-basis: calc(100% - 48px); }
+  .lrow .acts { width: 100%; padding-left: 48px; justify-content: space-between; }
+}
+
+/* ---------- phone ---------- */
+@media (max-width: 760px) {
+  .app { display: block; }
+  .side {
+    position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line);
+    grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto; grid-template-areas: "brand foot" "nav nav";
+    padding-block: 12px 10px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); row-gap: 10px;
+  }
+  .brand { padding: 0; }
+  .side-foot { padding: 0; display: flex; align-items: center; gap: 10px; }
+  .side-foot .sample { display: none; }
+  .nav { flex-direction: row; overflow-x: auto; scrollbar-width: none; gap: 6px; margin-inline: -4px; padding: 2px 4px; }
+  .nav::-webkit-scrollbar { display: none; }
+  .nav a { background: var(--card); border-radius: 999px; padding: 6px 12px; box-shadow: var(--shadow); }
+  .main { padding-block: 20px 72px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .bento { gap: 10px; }
+  .tile { border-radius: 16px; padding: 14px 15px; }
+  .big { font-size: 25px; }
+  .big.host { font-size: 17px; }
+  .pane-head h1 { font-size: 23px; }
+  dialog { width: 100vw; margin: auto 0 0; border-radius: 22px 22px 0 0; max-height: 92vh; }
+  .sheet { padding: 18px max(16px, env(safe-area-inset-right, 0px)) calc(20px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+  .sheet::before { content: ""; width: 36px; height: 5px; border-radius: 3px; background: var(--line); justify-self: center; margin: -8px 0 2px; }
+}
+@media (max-width: 380px) { .state span:last-child { display: none; } }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 </style>
 </head>
 <body>
-<header>
-  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.08 13.21C20.19 13.35 20.57 13.75 20.77 14.03C20.97 14.32 21.15 14.61 21.3 14.9C21.45 15.19 21.58 15.49 21.67 15.79C21.76 16.08 21.83 16.38 21.87 16.67C21.9 16.96 21.91 17.25 21.89 17.53C21.87 17.81 21.82 18.08 21.74 18.34C21.66 18.6 21.56 18.85 21.42 19.08C21.29 19.32 21.14 19.54 20.96 19.74C20.78 19.94 20.57 20.12 20.34 20.29C20.12 20.45 19.87 20.59 19.6 20.71C19.34 20.83 19.05 20.93 18.75 21C18.45 21.07 18.14 21.12 17.81 21.15C17.49 21.17 17.15 21.16 16.8 21.13C16.46 21.1 16.1 21.05 15.74 20.96C15.39 20.88 15.03 20.77 14.67 20.64C14.31 20.5 13.94 20.34 13.59 20.15C13.23 19.96 12.88 19.75 12.54 19.51C12.19 19.28 11.85 19.02 11.53 18.74C11.2 18.46 10.89 18.15 10.59 17.83C10.29 17.51 10 17.17 9.74 16.82C9.47 16.46 9.21 16.08 8.99 15.71C8.76 15.34 8.49 14.78 8.39 14.6M7.54 6.94C7.6 6.78 7.77 6.25 7.91 5.93C8.05 5.61 8.21 5.31 8.39 5.04C8.57 4.76 8.77 4.5 8.97 4.28C9.18 4.05 9.41 3.84 9.64 3.67C9.87 3.49 10.12 3.34 10.37 3.22C10.63 3.1 10.89 3 11.15 2.94C11.41 2.88 11.69 2.84 11.95 2.84C12.22 2.84 12.49 2.86 12.75 2.92C13.02 2.98 13.28 3.06 13.54 3.18C13.79 3.29 14.04 3.43 14.28 3.6C14.51 3.77 14.74 3.97 14.95 4.2C15.16 4.42 15.36 4.67 15.55 4.94C15.73 5.21 15.89 5.51 16.04 5.82C16.19 6.13 16.32 6.47 16.42 6.82C16.53 7.17 16.61 7.54 16.68 7.92C16.74 8.3 16.78 8.69 16.79 9.09C16.81 9.49 16.8 9.91 16.77 10.32C16.74 10.74 16.68 11.16 16.6 11.58C16.52 12.01 16.42 12.43 16.29 12.85C16.16 13.27 16.01 13.69 15.84 14.1C15.66 14.5 15.46 14.92 15.25 15.3C15.04 15.68 14.7 16.19 14.59 16.37M8.38 20.93C8.2 20.97 7.67 21.09 7.32 21.12C6.98 21.16 6.63 21.17 6.31 21.15C5.98 21.14 5.66 21.09 5.35 21.03C5.05 20.96 4.76 20.87 4.49 20.75C4.22 20.64 3.97 20.5 3.74 20.34C3.51 20.19 3.3 20.01 3.11 19.81C2.92 19.61 2.76 19.39 2.62 19.17C2.49 18.94 2.37 18.69 2.29 18.43C2.21 18.17 2.15 17.9 2.12 17.63C2.09 17.35 2.09 17.06 2.12 16.77C2.15 16.48 2.21 16.18 2.3 15.89C2.38 15.6 2.5 15.3 2.64 15C2.79 14.71 2.96 14.42 3.16 14.13C3.36 13.85 3.58 13.57 3.83 13.31C4.08 13.04 4.36 12.78 4.66 12.54C4.95 12.29 5.28 12.06 5.62 11.85C5.96 11.63 6.32 11.43 6.69 11.25C7.07 11.07 7.46 10.91 7.87 10.77C8.27 10.63 8.7 10.5 9.12 10.4C9.55 10.31 9.99 10.23 10.43 10.17C10.87 10.12 11.33 10.09 11.76 10.08C12.2 10.07 12.81 10.11 13.02 10.12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-  <h1>mlaude</h1>
-  <span class="pill" id="up">…</span>
-</header>
-<p class="sub">Local router control — keys, connections, models, logs. Key changes need a router restart.</p>
-
-<div class="grid">
-  <div class="card">
-    <h2>Status</h2>
-    <div class="tiles" id="tiles"></div>
-    <div class="row">
-      <button id="restart">Restart router</button>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="trefoil" viewBox="0 0 24 24"><path d="M20.08 13.21C20.19 13.35 20.57 13.75 20.77 14.03C20.97 14.32 21.15 14.61 21.3 14.9C21.45 15.19 21.58 15.49 21.67 15.79C21.76 16.08 21.83 16.38 21.87 16.67C21.9 16.96 21.91 17.25 21.89 17.53C21.87 17.81 21.82 18.08 21.74 18.34C21.66 18.6 21.56 18.85 21.42 19.08C21.29 19.32 21.14 19.54 20.96 19.74C20.78 19.94 20.57 20.12 20.34 20.29C20.12 20.45 19.87 20.59 19.6 20.71C19.34 20.83 19.05 20.93 18.75 21C18.45 21.07 18.14 21.12 17.81 21.15C17.49 21.17 17.15 21.16 16.8 21.13C16.46 21.1 16.1 21.05 15.74 20.96C15.39 20.88 15.03 20.77 14.67 20.64C14.31 20.5 13.94 20.34 13.59 20.15C13.23 19.96 12.88 19.75 12.54 19.51C12.19 19.28 11.85 19.02 11.53 18.74C11.2 18.46 10.89 18.15 10.59 17.83C10.29 17.51 10 17.17 9.74 16.82C9.47 16.46 9.21 16.08 8.99 15.71C8.76 15.34 8.49 14.78 8.39 14.6M7.54 6.94C7.6 6.78 7.77 6.25 7.91 5.93C8.05 5.61 8.21 5.31 8.39 5.04C8.57 4.76 8.77 4.5 8.97 4.28C9.18 4.05 9.41 3.84 9.64 3.67C9.87 3.49 10.12 3.34 10.37 3.22C10.63 3.1 10.89 3 11.15 2.94C11.41 2.88 11.69 2.84 11.95 2.84C12.22 2.84 12.49 2.86 12.75 2.92C13.02 2.98 13.28 3.06 13.54 3.18C13.79 3.29 14.04 3.43 14.28 3.6C14.51 3.77 14.74 3.97 14.95 4.2C15.16 4.42 15.36 4.67 15.55 4.94C15.73 5.21 15.89 5.51 16.04 5.82C16.19 6.13 16.32 6.47 16.42 6.82C16.53 7.17 16.61 7.54 16.68 7.92C16.74 8.3 16.78 8.69 16.79 9.09C16.81 9.49 16.8 9.91 16.77 10.32C16.74 10.74 16.68 11.16 16.6 11.58C16.52 12.01 16.42 12.43 16.29 12.85C16.16 13.27 16.01 13.69 15.84 14.1C15.66 14.5 15.46 14.92 15.25 15.3C15.04 15.68 14.7 16.19 14.59 16.37M8.38 20.93C8.2 20.97 7.67 21.09 7.32 21.12C6.98 21.16 6.63 21.17 6.31 21.15C5.98 21.14 5.66 21.09 5.35 21.03C5.05 20.96 4.76 20.87 4.49 20.75C4.22 20.64 3.97 20.5 3.74 20.34C3.51 20.19 3.3 20.01 3.11 19.81C2.92 19.61 2.76 19.39 2.62 19.17C2.49 18.94 2.37 18.69 2.29 18.43C2.21 18.17 2.15 17.9 2.12 17.63C2.09 17.35 2.09 17.06 2.12 16.77C2.15 16.48 2.21 16.18 2.3 15.89C2.38 15.6 2.5 15.3 2.64 15C2.79 14.71 2.96 14.42 3.16 14.13C3.36 13.85 3.58 13.57 3.83 13.31C4.08 13.04 4.36 12.78 4.66 12.54C4.95 12.29 5.28 12.06 5.62 11.85C5.96 11.63 6.32 11.43 6.69 11.25C7.07 11.07 7.46 10.91 7.87 10.77C8.27 10.63 8.7 10.5 9.12 10.4C9.55 10.31 9.99 10.23 10.43 10.17C10.87 10.12 11.33 10.09 11.76 10.08C12.2 10.07 12.81 10.11 13.02 10.12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+</svg>
+<div class="app">
+  <aside class="side">
+    <div class="brand">
+      <svg class="glyph" viewBox="0 0 24 24" aria-hidden="true"><use href="#trefoil"/></svg>
+      <div><div class="brand-name">mlaude</div><div class="brand-sub mono" id="brand-addr">127.0.0.1:8787</div></div>
     </div>
-  </div>
-
-  <div class="card">
-    <h2>Keys</h2>
-    <div id="keyrows"></div>
-    <p class="hint">Anthropic is an optional override — empty means Claude Code login. Saved keys apply after restart.</p>
-  </div>
-
-  <div class="card">
-    <h2>Connections</h2>
-    <label>OpenCode host<input type="text" id="c-host" autocomplete="off"></label>
-    <label>Chat path<input type="text" id="c-path" autocomplete="off"></label>
-    <label>Models path<input type="text" id="c-models" autocomplete="off"></label>
-    <div class="row"><button id="connsave">Save connections</button></div>
-  </div>
-
-  <div class="card">
-    <h2>Models <span class="mono" id="mcounts"></span></h2>
-    <div class="scroll"><table id="mtable"><tr><th>Model</th><th>Label</th></tr></table></div>
-    <div class="row">
-      <button class="primary" id="sync">Sync now</button>
-      <label style="margin:0"><input type="checkbox" id="prune"> prune stale oc- entries</label>
+    <nav class="nav" aria-label="Sections">
+      <a href="#overview" data-pane="overview"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="2" y="2" width="5" height="5" rx="1.3"/><rect x="9" y="2" width="5" height="5" rx="1.3"/><rect x="2" y="9" width="5" height="5" rx="1.3"/><rect x="9" y="9" width="5" height="5" rx="1.3"/></svg>Overview</a>
+      <a href="#keys" data-pane="keys"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="5.5" cy="10.5" r="3"/><path d="M7.7 8.3 14 2M11.3 4.7l1.8 1.8M9.6 6.4l1.4 1.4"/></svg>API keys<span class="count" id="nav-keys"></span></a>
+      <a href="#connections" data-pane="connections"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M6.5 9.5l3-3M5 7.6 3.6 9a2.6 2.6 0 0 0 3.7 3.7L8.6 11.4M11 8.4 12.4 7A2.6 2.6 0 0 0 8.7 3.3L7.4 4.6"/></svg>Connections</a>
+      <a href="#models" data-pane="models"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M8 2 14 5 8 8 2 5Z"/><path d="M2 8.2l6 3 6-3M2 11.2l6 3 6-3"/></svg>Models<span class="count" id="nav-models"></span></a>
+      <a href="#log" data-pane="log"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M3 4h10M3 8h10M3 12h6"/></svg>Log</a>
+    </nav>
+    <div class="side-foot">
+      <div class="state" id="state" data-s="up"><span class="dot"></span><span id="state-text">Checking…</span></div>
+      <button class="pill" type="button" id="restart" data-api="/api/restart">Restart router</button>
+      <p class="sample" id="sample-note" hidden>Showing sample data. Open this page from the router at <span class="mono">/ui</span> for live values.</p>
     </div>
-    <p class="hint" id="syncmsg"></p>
-  </div>
+  </aside>
 
-  <div class="card full">
-    <h2>Log</h2>
-    <div class="log" id="log">…</div>
-    <div class="row"><button id="logrefresh">Refresh</button></div>
-  </div>
+  <main class="main">
+    <div class="banner" id="pending" role="status" hidden>
+      <p><strong>Restart needed.</strong> <span id="pending-text"></span></p>
+      <button class="pill primary" type="button" id="pending-restart">Restart now</button>
+    </div>
+
+    <!-- OVERVIEW: router tile + stat tiles + recent requests -->
+    <section class="pane" data-pane="overview" aria-labelledby="h-overview">
+      <header class="pane-head">
+        <h1 id="h-overview">Overview</h1>
+        <p>Claude Code sends every request here. <span class="prefix">muse-</span> models go to Meta, <span class="prefix">oc-</span> models go to OpenCode, and everything else goes to Anthropic.</p>
+      </header>
+      <div class="bento" data-api="/api/status">
+        <article class="tile router" id="t-router" data-s="up" aria-labelledby="r-state">
+          <span class="lbl"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 8h3l2-4 2 8 2-4h3"/></svg>Router</span>
+          <div class="r-main">
+            <div class="ring" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#trefoil"/></svg></div>
+            <div><div class="big" id="r-state">Running</div><div class="r-port" id="r-port">127.0.0.1:8787</div></div>
+          </div>
+          <ul class="routes" id="routes" aria-label="Routing rules"></ul>
+          <div class="r-act">
+            <button class="roundbtn" type="button" id="restart-tile" aria-describedby="r-hint"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16.5 10a6.5 6.5 0 1 1-1.9-4.6"/><path d="M16.5 3v3.5H13"/></svg><span class="sr-only">Restart router</span></button>
+            <div><div class="t1">Restart</div><div class="t2" id="r-hint">Reloads keys and router code</div></div>
+          </div>
+        </article>
+        <article class="tile" aria-label="Keys">
+          <span class="lbl"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="5.5" cy="10.5" r="3"/><path d="M7.7 8.3 14 2M11.3 4.7l1.8 1.8"/></svg>Keys</span>
+          <div class="big" id="s-keys">–</div>
+          <div class="foot kdots" id="s-kdots"></div>
+        </article>
+        <article class="tile" aria-label="Models">
+          <span class="lbl"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M8 2 14 5 8 8 2 5Z"/><path d="M2 8.2l6 3 6-3M2 11.2l6 3 6-3"/></svg>Models</span>
+          <div class="big" id="s-models">–</div>
+          <div class="foot"><div class="meter" id="s-meter" role="img"></div><div class="legend-mini" id="s-mix"></div></div>
+        </article>
+        <article class="tile" aria-label="Connection">
+          <span class="lbl"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M6.5 9.5l3-3M5 7.6 3.6 9a2.6 2.6 0 0 0 3.7 3.7L8.6 11.4M11 8.4 12.4 7A2.6 2.6 0 0 0 8.7 3.3L7.4 4.6"/></svg>Connection</span>
+          <div class="big host" id="s-host">–</div>
+          <div class="foot mono" id="s-path"></div>
+        </article>
+        <article class="tile" aria-label="Last sync">
+          <span class="lbl"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M8 4.5V8l2.5 1.5"/></svg>Last sync</span>
+          <div class="big" id="s-sync">–</div>
+          <div class="foot" id="s-sync-at"></div>
+        </article>
+        <article class="tile w4" aria-labelledby="h-peek">
+          <div class="head"><h2 id="h-peek">Recent requests</h2><span class="end"><a class="pill" href="#log">Open full log</a></span></div>
+          <pre class="log peek" id="log-peek" tabindex="0" aria-label="Last log lines"></pre>
+        </article>
+      </div>
+    </section>
+
+    <!-- KEYS -->
+    <section class="pane" data-pane="keys" aria-labelledby="h-keys" hidden>
+      <header class="pane-head">
+        <h1 id="h-keys">API keys</h1>
+        <p>Keys live in the macOS Keychain or mlaude's local secrets file. Only a masked preview is shown here. The router reads keys at startup, so a new key takes effect after a restart.</p>
+      </header>
+      <article class="tile"><div class="list" id="keys" data-api="/api/keys"></div></article>
+      <p class="foot-note">Anthropic is optional: leave it empty and Claude Code keeps using your Claude login. OpenCode needs a key to chat with <span class="prefix">oc-</span> models, but syncing the free model list works without one.</p>
+    </section>
+
+    <!-- CONNECTIONS -->
+    <section class="pane" data-pane="connections" aria-labelledby="h-conn" hidden>
+      <header class="pane-head">
+        <h1 id="h-conn">Connections</h1>
+        <p>Where <span class="prefix">oc-</span> requests and model syncs go. Saved changes apply to the next request, no restart needed.</p>
+      </header>
+      <article class="tile" aria-labelledby="h-endpoint">
+        <div class="head"><h2 id="h-endpoint">OpenCode endpoint</h2><span class="end"><button class="pill" type="button" id="conn-edit">Edit</button></span></div>
+        <dl class="kv" id="conn-view" data-api="/api/connections"></dl>
+        <p class="resolved" id="conn-resolved"></p>
+      </article>
+      <p class="foot-note"><span class="mono">OC_HOST</span>, <span class="mono">OC_PATH</span> and <span class="mono">OC_MODELS_PATH</span> in the environment take priority over saved values.</p>
+    </section>
+
+    <!-- MODELS -->
+    <section class="pane" data-pane="models" aria-labelledby="h-models" hidden>
+      <header class="pane-head">
+        <h1 id="h-models">Models</h1>
+        <p>Entries in the Claude Code model picker, read from <code>~/.claude/settings.json</code>.</p>
+      </header>
+      <article class="tile" aria-label="Model list">
+        <div class="head"><h2>Picker</h2><span class="sub" id="m-sub"></span></div>
+        <div class="mgrid">
+          <div class="mix">
+            <div class="meter lg" id="meter" aria-label="Model mix by upstream"></div>
+            <ul class="legend" id="legend" aria-label="Filter the table by upstream"></ul>
+            <div class="syncbox">
+              <label class="swrow" for="prune"><span>Remove stale models<small>Drop <span class="mono">oc-</span> entries OpenCode no longer lists</small></span><input type="checkbox" role="switch" class="switch" id="prune"></label>
+              <button class="pill primary" type="button" id="sync" data-api="/api/sync" style="justify-content:center">Sync free models from OpenCode</button>
+              <div class="sync-when" id="sync-when"></div>
+              <div class="diff" id="diff" role="status" hidden></div>
+            </div>
+          </div>
+          <div class="tablewrap"><table data-api="/api/models"><thead><tr><th>Model</th><th>Label</th></tr></thead><tbody id="mbody"></tbody></table></div>
+        </div>
+      </article>
+    </section>
+
+    <!-- LOG -->
+    <section class="pane" data-pane="log" aria-labelledby="h-log" hidden>
+      <header class="pane-head">
+        <h1 id="h-log">Log</h1>
+        <p class="mono">~/Library/Logs/claude-router.log</p>
+      </header>
+      <article class="tile">
+        <div class="toolbar">
+          <label class="sr-only" for="log-lines">Lines to show</label>
+          <select class="pill" id="log-lines"><option value="40">Last 40 lines</option><option value="100">Last 100 lines</option><option value="200">Last 200 lines</option><option value="500">Last 500 lines</option></select>
+          <label class="swlabel" for="log-follow"><input type="checkbox" role="switch" class="switch" id="log-follow">Refresh every 5 s</label>
+          <span class="spacer"></span>
+          <button class="pill" type="button" id="log-refresh">Refresh</button>
+        </div>
+        <pre class="log full" id="log" data-api="/api/log" tabindex="0" aria-label="Router log"></pre>
+      </article>
+    </section>
+  </main>
 </div>
-<div id="toast"></div>
+
+<!-- sheet: add or replace a key -->
+<dialog id="key-sheet" aria-labelledby="ks-title">
+  <form class="sheet" id="key-form" novalidate>
+    <h2 id="ks-title">Replace key</h2>
+    <p id="ks-desc"></p>
+    <label class="field" for="ks-input">New key
+      <input type="password" id="ks-input" autocomplete="new-password" spellcheck="false" placeholder="Paste key">
+      <span class="hint">After saving, only a masked preview is shown.</span>
+    </label>
+    <p class="err" id="ks-err" role="alert" hidden></p>
+    <div class="acts"><button class="pill" type="button" data-close>Cancel</button><button class="pill primary" type="submit" id="ks-save">Save key</button></div>
+  </form>
+</dialog>
+
+<!-- sheet: edit the OpenCode endpoint -->
+<dialog id="conn-sheet" aria-labelledby="cs-title">
+  <form class="sheet" id="conn-form" novalidate>
+    <h2 id="cs-title">OpenCode endpoint</h2>
+    <label class="field" for="c-host">Host<input class="mono" type="text" id="c-host" autocomplete="off" spellcheck="false"></label>
+    <label class="field" for="c-path">Chat path<input class="mono" type="text" id="c-path" autocomplete="off" spellcheck="false"></label>
+    <label class="field" for="c-models">Models path<input class="mono" type="text" id="c-models" autocomplete="off" spellcheck="false"><span class="hint">Sync reads the free model list from here.</span></label>
+    <p class="resolved" id="c-resolved"></p>
+    <p class="err" id="cs-err" role="alert" hidden></p>
+    <div class="acts"><button class="pill quiet left" type="button" id="c-defaults">Use defaults</button><button class="pill" type="button" data-close>Cancel</button><button class="pill primary" type="submit" id="cs-save">Save</button></div>
+  </form>
+</dialog>
+
+<div class="hud" id="toast" role="status" aria-live="polite" hidden><i><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path id="toast-icon" d="M2.5 6.2 5 8.5l4.5-5"/></svg></i><span id="toast-text"></span></div>
 
 <script>
 "use strict";
-function toast(msg) {
-  var t = document.getElementById("toast");
-  t.textContent = msg; t.style.display = "block";
-  setTimeout(function () { t.style.display = "none"; }, 2200);
+/* ================= data layer =================
+   Served by the router at /ui  -> live calls to /api/status, /api/keys, /api/connections,
+                                   /api/models, /api/log?lines=N, /api/sync {prune}, /api/restart.
+   Opened anywhere else         -> SAMPLE data below; POSTs are simulated in memory. */
+const LIVE = /^\/ui(\/|$)/.test(location.pathname);
+const DEFAULTS = { oc_host: "opencode.ai", oc_path: "/zen/v1/chat/completions", oc_models_path: "/inference/v1/models" };
+const SERVICES = [
+  { id: "meta", name: "Meta", serves: "muse-", item: "meta-model-api" },
+  { id: "opencode", name: "OpenCode", serves: "oc-", item: "opencode-api" },
+  { id: "anthropic", name: "Anthropic", serves: "everything else", item: "anthropic-api", optional: true }
+];
+const pad = n => String(n).padStart(2, "0");
+const isoLocal = d => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + "T" + pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds());
+const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const logStamp = d => pad(d.getDate()) + "/" + MON[d.getMonth()] + "/" + d.getFullYear() + " " + pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds());
+const ocEntry = id => ({ model: "oc-" + id, label: id, description: "OpenCode, via local router" });
+
+const SAMPLE = {
+  keys: { meta: "sk-m…41c9", opencode: "sk-o…e07b", anthropic: "missing" },
+  connections: Object.assign({}, DEFAULTS),
+  last_sync: isoLocal(new Date(Date.now() - 74 * 60000)),
+  entries: [
+    { model: "muse-spark-1.3", label: "Muse Spark 1.3", description: "Meta, via local router" },
+    { model: "muse-spark-1.3-contributor", label: "Muse Spark 1.3 (contributor)", description: "Meta, via local router" },
+    ocEntry("beam-free"), ocEntry("big-pickle-free"), ocEntry("code-supernova-free"),
+    ocEntry("grok-code-free"), ocEntry("kimi-k2-free"), ocEntry("qwen3-coder-free"),
+    { model: "claude-opus-4-6", label: "Opus" }
+  ],
+  upstream: ["beam-free", "big-pickle-free", "glm-4.6-free", "grok-code-free", "kimi-k2-free", "qwen3-coder-free"],
+  log: (function () {
+    /* timestamps relative to now, in BaseHTTPRequestHandler's format; detail lines print before their request line */
+    const T = m => logStamp(new Date(Date.now() - m * 60000));
+    const R = (m, req, code) => T(m) + ' "' + req + ' HTTP/1.1" ' + code + " -";
+    const MSG = "POST /v1/messages?beta=true";
+    return [
+      "claude router on 127.0.0.1:8787",
+      R(80, "GET /ui", 200),
+      R(74, "POST /api/sync", 200),
+      R(52, "GET /api/status", 200),
+      "  muse via responses: input=18422 cached=16384 output=611",
+      R(49, MSG, 200),
+      "  muse: dropped image block (responses input takes text only)",
+      "  muse via responses: input=21907 cached=18432 output=1204",
+      R(48, MSG, 200),
+      R(47, MSG, 200),
+      R(46, "POST /v1/messages/count_tokens?beta=true", 200),
+      '  upstream error: host=opencode.ai/zen/v1/chat/completions model=kimi-k2-free status=429 body={"error":{"message":"rate limited, retry in 20s"}}',
+      R(46, MSG, 429),
+      "  oc: stream ended without finish_reason, aborting so Claude Code retries",
+      R(45, MSG, 502),
+      "  muse via responses: input=24116 cached=22528 output=388",
+      R(44, MSG, 200),
+      R(12, MSG, 200),
+      R(3, MSG, 200)
+    ];
+  })(),
+  downUntil: 0
+};
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function maskKey(v) { v = v.trim(); return v.length <= 8 ? "••••" : v.slice(0, 4) + "…" + v.slice(-4); }
+function counts(entries) {
+  const c = { muse: 0, oc: 0, other: 0 };
+  entries.forEach(o => { const m = o.model || ""; c[m.startsWith("muse-") ? "muse" : m.startsWith("oc-") ? "oc" : "other"]++; });
+  return c;
+}
+async function mockApi(path, opts) {
+  opts = opts || {};
+  const method = opts.method || "GET", route = path.split("?")[0];
+  const body = opts.body ? JSON.parse(opts.body) : {};
+  await sleep(route === "/api/sync" ? 700 : 220);
+  if (Date.now() < SAMPLE.downUntil) throw new Error("router unreachable");
+  if (!route.startsWith("/api/log")) SAMPLE.log.push(logStamp(new Date()) + ' "' + method + " " + path + ' HTTP/1.1" 200 -');
+  const clone = o => JSON.parse(JSON.stringify(o));
+  if (route === "/api/status") return { router: "ok", port: 8787, keys: clone(SAMPLE.keys), models: counts(SAMPLE.entries), connections: clone(SAMPLE.connections), last_sync: SAMPLE.last_sync };
+  if (route === "/api/keys" && method === "GET") return clone(SAMPLE.keys);
+  if (route === "/api/keys") {
+    if (!body.service || typeof body.key !== "string" || !body.key.trim()) throw new Error("need {service, key}");
+    SAMPLE.keys[body.service] = maskKey(body.key);
+    return { service: body.service, shown: SAMPLE.keys[body.service], restart_required: true };
+  }
+  if (route === "/api/connections" && method === "GET") return clone(SAMPLE.connections);
+  if (route === "/api/connections") {
+    for (const k in body) {
+      if (!(k in DEFAULTS)) throw new Error("unknown connection: '" + k + "'");
+      if (typeof body[k] !== "string" || !body[k].trim()) throw new Error("empty value for '" + k + "'");
+      SAMPLE.connections[k] = body[k].trim();
+    }
+    return { connections: clone(SAMPLE.connections), restart_required: false };
+  }
+  if (route === "/api/models") return { entries: clone(SAMPLE.entries), counts: counts(SAMPLE.entries) };
+  if (route === "/api/log") { const n = Math.min(500, Math.max(1, parseInt((path.split("lines=")[1] || "50"), 10) || 50)); return { lines: SAMPLE.log.slice(-n) }; }
+  if (route === "/api/sync") {
+    /* the free-tier list is public: the real route syncs with or without an OpenCode key */
+    const wanted = SAMPLE.upstream.map(ocEntry), have = new Set(SAMPLE.entries.map(e => e.model));
+    const diff = { added: [], updated: [], pruned: [] };
+    wanted.forEach(w => { if (!have.has(w.model)) { SAMPLE.entries.push(w); diff.added.push(w.model); } });
+    if (body.prune) {
+      const keep = new Set(wanted.map(w => w.model));
+      SAMPLE.entries = SAMPLE.entries.filter(e => { const stale = e.model.startsWith("oc-") && !keep.has(e.model); if (stale) diff.pruned.push(e.model); return !stale; });
+    }
+    if (diff.added.length || diff.pruned.length) SAMPLE.last_sync = isoLocal(new Date());
+    return { diff: diff };
+  }
+  if (route === "/api/restart") { SAMPLE.downUntil = Date.now() + 1600; setTimeout(() => SAMPLE.log.push("claude router on 127.0.0.1:8787"), 1600); return { restarting: true }; }
+  throw new Error("unknown API route");
 }
 async function api(path, opts) {
-  var r = await fetch(path, opts);
-  var body = await r.json().catch(function () { return {}; });
+  if (!LIVE) return mockApi(path, opts);
+  const r = await fetch(path, opts);
+  const body = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error((body.error && body.error.message) || ("HTTP " + r.status));
   return body;
 }
-var SERVICES = [["meta", "Meta"], ["opencode", "OpenCode"], ["anthropic", "Anthropic override"]];
-
-async function refresh() {
-  var s = await api("/api/status");
-  var up = document.getElementById("up");
-  up.textContent = "router up · :" + s.port;
-  up.classList.add("on");
-  document.getElementById("tiles").innerHTML =
-    [["Meta", s.keys.meta], ["OpenCode", s.keys.opencode],
-     ["Anthropic", s.keys.anthropic], ["Models", s.models.muse + s.models.oc + s.models.other],
-     ["Last sync", s.last_sync || "never"]].map(function (kv) {
-      return '<div class="tile"><div class="k">' + kv[0] + '</div><div class="v mono">' + kv[1] + "</div></div>";
-    }).join("");
-  var kr = document.getElementById("keyrows");
-  kr.innerHTML = "";
-  SERVICES.forEach(function (svc) {
-    var wrap = document.createElement("div");
-    wrap.innerHTML = "<label>" + svc[1] + ' <span class="mono">(' + s.keys[svc[0]] + ")</span>" +
-      '<input type="password" autocomplete="new-password" placeholder="paste new key, empty keeps current"></label>';
-    var row = document.createElement("div");
-    row.className = "row";
-    var btn = document.createElement("button");
-    btn.textContent = "Save " + svc[1] + " key";
-    btn.onclick = async function () {
-      var input = wrap.querySelector("input");
-      if (!input.value) { toast("empty — kept current"); return; }
-      btn.disabled = true;
-      try {
-        var r = await api("/api/keys", {method: "POST",
-          headers: {"content-type": "application/json"},
-          body: JSON.stringify({service: svc[0], key: input.value})});
-        input.value = "";
-        toast("saved " + r.shown + " — restart router to apply");
-        refresh();
-      } catch (e) { toast("error: " + e.message); }
-      btn.disabled = false;
-    };
-    row.appendChild(btn);
-    wrap.appendChild(row);
-    kr.appendChild(wrap);
+const post = (path, data) => api(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(data || {}) });
+/* Restart: the router execs itself, so the POST may drop. Poll status until it answers. */
+async function restartRouter(onState) {
+  onState("restarting");
+  try { await post("/api/restart"); } catch (e) { /* expected: connection drops on exec */ }
+  for (let i = 0; i < 20; i++) {
+    await sleep(900);
+    try { await api("/api/status"); onState("up"); return true; } catch (e) { /* still coming up */ }
+  }
+  onState("down"); return false;
+}
+const keySet = v => !!v && v !== "missing";
+const routeOf = m => m.startsWith("muse-") ? "muse" : m.startsWith("oc-") ? "oc" : "other";
+function ago(iso) {
+  if (!iso) return "Never";
+  const s = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (s < 60) return "Just now";
+  if (s < 3600) return Math.round(s / 60) + " min ago";
+  if (s < 86400) return Math.round(s / 3600) + " h ago";
+  return Math.round(s / 86400) + " d ago";
+}
+const clock = iso => iso ? iso.slice(11, 16) : "";
+function when(iso) {
+  if (!iso) return "";
+  const d = new Date(iso), now = new Date(), y = new Date(now);
+  y.setDate(now.getDate() - 1);
+  const same = (a, b) => a.toDateString() === b.toDateString();
+  return (same(d, now) ? "Today" : same(d, y) ? "Yesterday" : MON[d.getMonth()] + " " + d.getDate()) + " at " + clock(iso);
+}
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+/* Log lines -> parsed spans (time / method path / status), detail lines indented, errors tinted. */
+function renderLog(pre, lines) {
+  pre.textContent = "";
+  if (!lines.length) { pre.textContent = "(no log yet)"; return; }
+  const frag = document.createDocumentFragment();
+  lines.forEach(line => {
+    const row = document.createElement("span"); row.className = "ln";
+    const m = line.match(/^(\d\d\/\w{3}\/\d{4}) (\d\d:\d\d:\d\d) "(\S+) (\S+)[^"]*" (\d{3})/);
+    if (m) {
+      row.title = m[1] + " " + m[2];
+      const t = document.createElement("span"); t.className = "t"; t.textContent = m[2] + "  ";
+      const me = document.createElement("span"); me.className = "meth"; me.textContent = m[3] + " ";
+      const p = document.createTextNode(m[4] + "  ");
+      const c = document.createElement("span"); c.className = "code c" + m[5][0]; c.textContent = m[5];
+      row.append(t, me, p, c);
+    } else {
+      row.textContent = line.trim();
+      if (/^\s/.test(line)) row.classList.add("sub");
+      if (/upstream error|aborting/.test(line)) row.classList.add("err");
+    }
+    frag.append(row);
   });
-  document.getElementById("c-host").value = s.connections.oc_host;
-  document.getElementById("c-path").value = s.connections.oc_path;
-  document.getElementById("c-models").value = s.connections.oc_models_path;
-  var m = await api("/api/models");
-  document.getElementById("mcounts").textContent =
-    m.counts.muse + " muse · " + m.counts.oc + " oc · " + m.counts.other + " other";
-  document.getElementById("mtable").innerHTML =
-    "<tr><th>Model</th><th>Label</th></tr>" + m.entries.map(function (e) {
-      return "<tr><td class='mono'>" + e.model + "</td><td>" + (e.label || "") + "</td></tr>";
-    }).join("");
-  refreshLog();
+  pre.append(frag);
+  pre.scrollTop = pre.scrollHeight;
 }
-async function refreshLog() {
-  try {
-    var l = await api("/api/log?lines=40");
-    document.getElementById("log").textContent =
-      l.lines.length ? l.lines.join("\n") : "(no log yet)";
-  } catch (e) { document.getElementById("log").textContent = "error: " + e.message; }
+/* ================= end data layer ================= */
+
+const $ = (s, el) => (el || document).querySelector(s);
+const $$ = (s, el) => Array.from((el || document).querySelectorAll(s));
+let STATUS = null, MODELS = null, FILTER = null, toastTimer = 0, editing = null, restarting = false;
+
+/* ---------- feedback ---------- */
+function toast(msg, kind) {
+  const t = $("#toast"); t.dataset.kind = kind || "ok"; $("#toast-text").textContent = msg;
+  $("#toast-icon").setAttribute("d", kind === "bad" ? "M3.5 3.5l5 5M8.5 3.5l-5 5" : "M2.5 6.2 5 8.5l4.5-5");
+  t.hidden = true; void t.offsetWidth; t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 2600);
 }
-document.getElementById("restart").onclick = async function () {
-  try { await api("/api/restart", {method: "POST"}); toast("restarting…"); }
-  catch (e) { toast("restart sent (connection drops on exec)"); }
-  setTimeout(refresh, 3000);
-};
-document.getElementById("connsave").onclick = async function () {
-  try {
-    await api("/api/connections", {method: "POST",
-      headers: {"content-type": "application/json"},
-      body: JSON.stringify({
-        oc_host: document.getElementById("c-host").value,
-        oc_path: document.getElementById("c-path").value,
-        oc_models_path: document.getElementById("c-models").value})});
-    toast("connections saved");
-  } catch (e) { toast("error: " + e.message); }
-};
-document.getElementById("sync").onclick = async function () {
-  var btn = this; btn.disabled = true;
-  try {
-    var r = await api("/api/sync", {method: "POST",
-      headers: {"content-type": "application/json"},
-      body: JSON.stringify({prune: document.getElementById("prune").checked})});
-    var d = r.diff;
-    document.getElementById("syncmsg").textContent =
-      "sync: +" + d.added.length + " ~" + d.updated.length + " −" + d.pruned.length +
-      (d.added.concat(d.updated).length ? " (" + d.added.concat(d.updated).join(", ") + ")" : "");
-    refresh();
-  } catch (e) { toast("error: " + e.message); }
-  btn.disabled = false;
-};
-document.getElementById("logrefresh").onclick = refreshLog;
-refresh().catch(function (e) {
-  document.getElementById("up").textContent = "unreachable";
+function setState(s) {
+  restarting = s === "restarting";
+  $("#state").dataset.s = s;
+  $("#state-text").textContent = { up: "Running", restarting: "Restarting…", down: "Not responding" }[s];
+  $("#t-router").dataset.s = s;
+  $("#r-state").textContent = { up: "Running", restarting: "Restarting", down: "Not responding" }[s];
+  ["#restart", "#restart-tile", "#pending-restart"].forEach(id => { $(id).disabled = restarting; });
+}
+function markPending(text) {
+  $("#pending").hidden = !text;
+  if (text) $("#pending-text").textContent = text;
+  $("#t-router").classList.toggle("pending", !!text);
+  $("#restart").classList.toggle("attn", !!text);
+  $("#r-hint").textContent = text ? "A saved key is waiting for a restart" : "Reloads keys and router code";
+}
+
+/* ---------- panes (deep links) ---------- */
+const PANES = ["overview", "keys", "connections", "models", "log"];
+function showPane(name) {
+  if (!PANES.includes(name)) name = "overview";
+  $$(".pane").forEach(p => { p.hidden = p.dataset.pane !== name; });
+  $$(".nav a").forEach(a => { if (a.dataset.pane === name) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
+  if (name === "log") loadLog();
+}
+window.addEventListener("hashchange", () => { showPane(location.hash.slice(1)); window.scrollTo(0, 0); });
+
+/* ---------- status-driven tiles ---------- */
+function renderStatus() {
+  const s = STATUS, c = s.models, total = c.muse + c.oc + c.other;
+  const nKeys = SERVICES.filter(v => keySet(s.keys[v.id])).length;
+  $("#brand-addr").textContent = "127.0.0.1:" + s.port;
+  $("#nav-keys").textContent = nKeys + "/3";
+  $("#nav-models").textContent = total;
+  $("#r-port").textContent = "127.0.0.1:" + s.port;
+  $("#routes").innerHTML = [
+    ["muse-*", "Meta", s.keys.meta], ["oc-*", "OpenCode · " + s.connections.oc_host, s.keys.opencode], ["everything else", "Anthropic", s.keys.anthropic, true]
+  ].map(r => {
+    const set = keySet(r[2]), b = set ? "" : r[3] ? '<span class="badge">Claude login</span>' : '<span class="badge bad">No key</span>';
+    return "<li><code>" + r[0] + '</code><span class="to">' + esc(r[1]) + b + "</span></li>";
+  }).join("");
+  $("#s-keys").innerHTML = nKeys + '<span class="of">/3</span>';
+  $("#s-kdots").innerHTML = SERVICES.map(v => {
+    const set = keySet(s.keys[v.id]);
+    return '<span class="kdot ' + (set ? "on" : v.optional ? "" : "off") + '" title="' + v.name + (set ? " key stored" : v.optional ? ": using Claude login" : " key missing") + '"><i></i>' + v.name + "</span>";
+  }).join("");
+  $("#s-models").textContent = total;
+  $("#s-meter").setAttribute("aria-label", c.muse + " muse, " + c.oc + " oc, " + c.other + " other");
+  $("#s-meter").innerHTML = ["muse", "oc", "other"].map(k => c[k] ? '<i class="c-' + k + '" style="flex:' + c[k] + '"></i>' : "").join("");
+  $("#s-mix").innerHTML = ["muse", "oc", "other"].map(k => '<span><span class="sq c-' + k + '"></span>' + c[k] + " " + k + "</span>").join("");
+  $("#s-host").textContent = s.connections.oc_host;
+  $("#s-path").textContent = s.connections.oc_path;
+  $("#s-sync").textContent = ago(s.last_sync);
+  $("#s-sync-at").textContent = s.last_sync ? when(s.last_sync) : "Sync from the Models pane";
+  $("#sync-when").textContent = s.last_sync ? "Last synced " + ago(s.last_sync).toLowerCase() + " · " + when(s.last_sync) : "Not synced yet";
+  renderKeys(); renderConn();
+}
+
+/* ---------- keys: list widget + sheet ---------- */
+const AV = { meta: "muse", opencode: "oc", anthropic: "other" };
+function renderKeys() {
+  $("#keys").innerHTML = SERVICES.map(v => {
+    const val = STATUS.keys[v.id], set = keySet(val);
+    const badge = set ? '<span class="badge ok">Stored</span>' : v.optional ? '<span class="badge">Using Claude login</span>' : '<span class="badge bad">Missing</span>';
+    const what = v.optional ? "Optional override for everything else" : 'Serves <span class="mono">' + v.serves + "</span> models";
+    const sub = (set ? '<span class="mono">' + esc(val) + "</span> · " : "") + what;
+    return '<div class="lrow"><span class="av ' + AV[v.id] + '" aria-hidden="true">' + v.name[0] + '</span><div class="txt"><div class="n">' + v.name + '</div><div class="s">' + sub + '</div></div><div class="acts">' + badge +
+      '<button class="pill" type="button" data-key="' + v.id + '">' + (set ? "Replace" : "Add key") + "</button></div></div>";
+  }).join("");
+}
+$("#keys").addEventListener("click", e => {
+  const b = e.target.closest("[data-key]"); if (!b) return;
+  editing = SERVICES.find(v => v.id === b.dataset.key);
+  const cur = STATUS.keys[editing.id];
+  $("#ks-title").textContent = (keySet(cur) ? "Replace " : "Add ") + editing.name + " key";
+  $("#ks-desc").textContent = (keySet(cur) ? "Current key " + cur + ". " : "") + (editing.optional ? "Optional. Without it Claude Code uses your Claude login. " : "Used for " + editing.serves + " models. ") + "The router picks it up after a restart.";
+  $("#ks-input").value = ""; $("#ks-err").hidden = true;
+  $("#key-sheet").showModal(); $("#ks-input").focus();
 });
+$("#key-form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const v = $("#ks-input").value;
+  if (!v.trim()) { $("#ks-err").textContent = "Paste a key, or press Cancel to keep the current one."; $("#ks-err").hidden = false; return; }
+  const btn = $("#ks-save"); btn.disabled = true; btn.textContent = "Saving…";
+  try {
+    const r = await post("/api/keys", { service: editing.id, key: v });
+    STATUS.keys[editing.id] = r.shown; renderStatus(); $("#key-sheet").close();
+    markPending("The new " + editing.name + " key (" + r.shown + ") is saved. The router keeps using the old one until it restarts.");
+    toast(editing.name + " key saved · " + r.shown);
+  } catch (ex) { $("#ks-err").textContent = ex.message; $("#ks-err").hidden = false; }
+  btn.disabled = false; btn.textContent = "Save key";
+});
+
+/* ---------- connections: widget + sheet ---------- */
+const CONN = [["c-host", "oc_host", "Host"], ["c-path", "oc_path", "Chat path"], ["c-models", "oc_models_path", "Models path"]];
+const resolvedHTML = v => '<span>Chat </span>https://<b>' + esc(v.oc_host) + "</b>" + esc(v.oc_path) + '<br><span>Model list </span>https://<b>' + esc(v.oc_host) + "</b>" + esc(v.oc_models_path);
+function renderConn() {
+  const c = STATUS.connections;
+  $("#conn-view").innerHTML = CONN.map(([, k, label]) => "<dt>" + label + "</dt><dd>" + esc(c[k]) + (c[k] === DEFAULTS[k] ? "" : '<span class="badge warn">Custom</span>') + "</dd>").join("");
+  $("#conn-resolved").innerHTML = resolvedHTML(c);
+}
+function connVals() { const o = {}; CONN.forEach(([id, k]) => { o[k] = $("#" + id).value.trim(); }); return o; }
+$("#conn-edit").addEventListener("click", () => {
+  CONN.forEach(([id, k]) => { $("#" + id).value = STATUS.connections[k]; });
+  $("#cs-err").hidden = true; $("#c-resolved").innerHTML = resolvedHTML(connVals()); $("#conn-sheet").showModal();
+});
+$("#conn-form").addEventListener("input", () => { $("#cs-err").hidden = true; $("#c-resolved").innerHTML = resolvedHTML(connVals()); });
+$("#c-defaults").addEventListener("click", () => { CONN.forEach(([id, k]) => { $("#" + id).value = DEFAULTS[k]; }); $("#c-resolved").innerHTML = resolvedHTML(connVals()); });
+$("#conn-form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const v = connVals(), empty = CONN.find(([, k]) => !v[k]);
+  if (empty) { $("#cs-err").textContent = empty[2] + " can't be empty. Use defaults to restore it."; $("#cs-err").hidden = false; return; }
+  const btn = $("#cs-save"); btn.disabled = true;
+  try { const r = await post("/api/connections", v); STATUS.connections = r.connections; renderStatus(); $("#conn-sheet").close(); toast("Endpoint saved · applies to the next request"); }
+  catch (ex) { $("#cs-err").textContent = ex.message; $("#cs-err").hidden = false; }
+  btn.disabled = false;
+});
+
+/* ---------- models: meter + legend filter + sync ---------- */
+const SERIES = [["muse", "muse-", "Meta"], ["oc", "oc-", "OpenCode"], ["other", "Other", "Anthropic"]];
+function renderModels() {
+  const c = MODELS.counts, total = c.muse + c.oc + c.other;
+  $("#m-sub").textContent = total + " entr" + (total === 1 ? "y" : "ies");
+  $("#meter").innerHTML = SERIES.map(([k, nm, up]) => c[k] ? '<button type="button" class="c-' + k + '" style="flex:' + c[k] + '" data-f="' + k + '" data-tip="' + c[k] + " " + nm + " model" + (c[k] === 1 ? "" : "s") + " → " + up + " (" + Math.round(c[k] / total * 100) + '%)" aria-label="' + c[k] + " " + nm + ' models, filter the table"></button>' : "").join("") + '<span class="tip" id="tip" hidden></span>';
+  $("#legend").innerHTML = SERIES.map(([k, nm, up]) => '<li><button type="button" data-f="' + k + '" aria-pressed="' + (FILTER === k) + '"><span class="sq c-' + k + '"></span><span><span class="nm">' + nm + '</span> <span class="up">→ ' + up + '</span></span><span class="ct">' + c[k] + "</span></button></li>").join("");
+  const rows = MODELS.entries.filter(e => !FILTER || routeOf(e.model || "") === FILTER);
+  $("#mbody").innerHTML = rows.length ? rows.map(e => '<tr><td class="m"><span class="sq c-' + routeOf(e.model || "") + '"></span>' + esc(e.model) + '<small class="lb">' + esc(e.label || "") + '</small></td><td class="l">' + esc(e.label || "") + "</td></tr>").join("")
+    : '<tr><td colspan="2" class="empty">No models from this upstream.</td></tr>';
+}
+function setFilter(f) { FILTER = FILTER === f ? null : f; renderModels(); }
+$("#legend").addEventListener("click", e => { const b = e.target.closest("[data-f]"); if (b) setFilter(b.dataset.f); });
+$("#meter").addEventListener("click", e => { const b = e.target.closest("[data-f]"); if (b) setFilter(b.dataset.f); });
+function showTip(b) {
+  const tip = $("#tip"); if (!tip) return;
+  tip.textContent = b.dataset.tip; tip.hidden = false;
+  const w = $("#meter").offsetWidth;
+  tip.style.left = Math.min(Math.max(b.offsetLeft + b.offsetWidth / 2, Math.min(90, w / 2)), Math.max(w - 90, w / 2)) + "px";
+}
+["pointerover", "focusin"].forEach(ev => $("#meter").addEventListener(ev, e => { const b = e.target.closest("[data-tip]"); if (b) showTip(b); }));
+["pointerout", "focusout"].forEach(ev => $("#meter").addEventListener(ev, () => { const t = $("#tip"); if (t) t.hidden = true; }));
+$("#sync").addEventListener("click", async () => {
+  const btn = $("#sync"), out = $("#diff"); btn.disabled = true; btn.textContent = "Syncing…";
+  try {
+    const d = (await post("/api/sync", { prune: $("#prune").checked })).diff;
+    const n = d.added.length + d.updated.length + d.pruned.length;
+    out.innerHTML = "<b>" + (n ? d.added.length + " added · " + d.updated.length + " updated · " + d.pruned.length + " removed" : "Already up to date") + "</b>" +
+      d.added.map(m => '<code class="add">+ ' + esc(m) + "</code>").join("") + d.updated.map(m => "<code>~ " + esc(m) + "</code>").join("") + d.pruned.map(m => '<code class="del">− ' + esc(m) + "</code>").join("");
+    out.hidden = false;
+    await Promise.all([loadStatus(), loadModels()]);
+    toast(n ? "Synced · " + n + " change" + (n === 1 ? "" : "s") : "Models already up to date");
+  } catch (ex) { toast("Sync failed: " + ex.message, "bad"); }
+  btn.disabled = false; btn.textContent = "Sync free models from OpenCode";
+});
+
+/* ---------- log: overview peek + full pane ---------- */
+let followTimer = 0;
+async function loadLog() {
+  try {
+    const l = await api("/api/log?lines=" + $("#log-lines").value);
+    renderLog($("#log"), l.lines);
+    renderLog($("#log-peek"), l.lines.slice(-10));
+  } catch (ex) { $("#log").textContent = $("#log-peek").textContent = "Couldn't read the log: " + ex.message; }
+}
+$("#log-refresh").addEventListener("click", loadLog);
+$("#log-lines").addEventListener("change", loadLog);
+$("#log-follow").addEventListener("change", e => { clearInterval(followTimer); if (e.target.checked) followTimer = setInterval(() => { if (!$('.pane[data-pane="log"]').hidden) loadLog(); }, 5000); });
+
+/* ---------- sheets: close buttons + tap outside ---------- */
+$$("dialog").forEach(d => {
+  $$("[data-close]", d).forEach(b => b.addEventListener("click", () => d.close()));
+  d.addEventListener("click", e => { if (e.target === d) d.close(); });
+});
+
+/* ---------- restart (sidebar, router tile, banner) ---------- */
+async function doRestart() {
+  if (restarting) return;
+  const ok = await restartRouter(setState);
+  if (ok) { markPending(""); toast("Router restarted"); refreshAll(); }
+  else toast("Router didn't come back. Check the log or run mlaude start.", "bad");
+}
+["#restart", "#restart-tile", "#pending-restart"].forEach(id => $(id).addEventListener("click", doRestart));
+
+/* ---------- boot ---------- */
+async function loadStatus() { STATUS = await api("/api/status"); renderStatus(); }
+async function loadModels() { MODELS = await api("/api/models"); renderModels(); }
+async function refreshAll() {
+  try { await loadStatus(); setState("up"); } catch (ex) { setState("down"); return; }
+  await Promise.all([loadModels(), loadLog()]).catch(ex => toast(ex.message, "bad"));
+}
+$("#sample-note").hidden = LIVE;
+showPane(location.hash.slice(1));
+refreshAll();
 </script>
 </body>
 </html>
