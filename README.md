@@ -1,5 +1,7 @@
 # mlaude — one Claude session, Anthropic + Meta + OpenCode, dashboard included
 
+*mlaude, aka **multiclaude**: the same tool, the same command — multiclaude is just the long name for using many Claudes through one localhost router.*
+
 A tiny localhost app that lets **one Claude Code session** use three backends:
 
 - `muse-*` → Meta (`api.meta.ai`, Responses API with `prompt_cache_key`, `/v1/messages` fallback)
