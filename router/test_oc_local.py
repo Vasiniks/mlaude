@@ -62,5 +62,41 @@ class AssistantTextTests(unittest.TestCase):
         self.assertEqual(oc_local._assistant_text(self._msgs(), 999), "")
 
 
+class ErrorKindTests(unittest.TestCase):
+    def test_failed_outcome_is_model_error(self):
+        calls = {"n": 0}
+
+        def fake_run(*args):
+            calls["n"] += 1
+            if args[0] == "session.create":
+                return {"data": {"id": "ses_test"}}
+            if args[0] == "session.message.list":
+                return {"data": [
+                    {"type": "idle", "time": {"created": 9999999999999},
+                     "outcome": "failed",
+                     "error": {"message": "Rate limit exceeded."}}]}
+            return {"data": {}}
+
+        oc_local._run, real = fake_run, oc_local._run
+        try:
+            with self.assertRaises(oc_local.ModelError):
+                oc_local.complete("beam-free", "hi")
+        finally:
+            oc_local._run = real
+
+    def test_infra_failure_is_local_upstream_error(self):
+        import oc_local as m
+
+        def boom(*args):
+            raise m.LocalUpstreamError("nope")
+
+        m._run, real = boom, m._run
+        try:
+            with self.assertRaises(m.LocalUpstreamError):
+                m.complete("beam-free", "hi")
+        finally:
+            m._run = real
+
+
 if __name__ == "__main__":
     unittest.main()

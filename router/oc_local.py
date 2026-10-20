@@ -25,7 +25,14 @@ DEADLINE_SECONDS = 540
 
 
 class LocalUpstreamError(Exception):
-    pass
+    """Local service itself unreachable (binary/service down). Caller may
+    fall back to direct HTTPS (billed keys)."""
+
+
+class ModelError(Exception):
+    """Upstream model refused the turn (rate limit, quota, ...). Falling
+    back to direct HTTPS would only turn this into a FreeTierError 403,
+    so the caller must surface it instead."""
 
 
 def _run(*args):
@@ -139,7 +146,7 @@ def complete(upstream_model, prompt_text):
                 return text or "(empty reply)"
             err = idle[-1].get("error") or {}
             detail = err.get("message") or outcome or "unknown error"
-            raise LocalUpstreamError("opencode %s: %s" % (upstream_model, detail))
+            raise ModelError("opencode %s: %s" % (upstream_model, detail))
     finally:
         try:
             _run("session.remove", "--param", "sessionID=" + sid)

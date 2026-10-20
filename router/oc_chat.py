@@ -403,6 +403,20 @@ def serve(handler, data, auth, host, path):
         text = oc_local.complete(upstream, oc_local.flatten_to_text(data))
     except oc_local.LocalUpstreamError as e:
         sys.stderr.write("  oc: local unavailable (%s), direct HTTPS\n" % e)
+    except oc_local.ModelError as e:
+        # Upstream refused the turn (rate limit, ...): direct HTTPS would
+        # only 403, so surface a retryable 429 instead.
+        sys.stderr.write("  oc: %s\n" % e)
+        payload = _dumps({"type": "error", "error": {
+            "type": "overloaded_error",
+            "message": "%s (try another oc- model)" % e}}).encode()
+        handler.send_response(429)
+        handler.send_header("content-type", "application/json")
+        handler.send_header("Content-Length", str(len(payload)))
+        handler.send_header("Connection", "close")
+        handler.end_headers()
+        handler.wfile.write(payload)
+        return
     except Unsupported as e:
         status, payload = (400, _dumps({"type": "error", "error": {
             "type": "invalid_request_error",
