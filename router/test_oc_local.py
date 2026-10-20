@@ -4,6 +4,7 @@
 Stdlib only, no network, no subprocess (helpers are pure).
 """
 import os
+import shutil
 import sys
 import unittest
 
@@ -96,6 +97,39 @@ class ErrorKindTests(unittest.TestCase):
                 m.complete("beam-free", "hi")
         finally:
             m._run = real
+
+
+class BinaryTests(unittest.TestCase):
+    """LaunchAgent PATH is sparse: OPENCODE_BIN pins the binary absolutely."""
+
+    def setUp(self):
+        self.saved = dict(os.environ)
+
+    def tearDown(self):
+        os.environ.clear()
+        os.environ.update(self.saved)
+
+    def test_env_override_wins(self):
+        os.environ["OPENCODE_BIN"] = sys.executable
+        self.assertEqual(oc_local._opencode_bin(), sys.executable)
+
+    def test_bad_env_falls_back_to_path(self):
+        os.environ["OPENCODE_BIN"] = "/no/such/binary"
+        self.assertEqual(oc_local._opencode_bin(),
+                         shutil.which("opencode"))
+
+    def test_run_uses_configured_binary(self):
+        os.environ["OPENCODE_BIN"] = "/bin/false"
+        with self.assertRaises(oc_local.LocalUpstreamError) as cm:
+            oc_local._run("session.create")
+        self.assertNotIn("binary not found", str(cm.exception))
+
+    def test_nothing_found_says_binary_not_found(self):
+        os.environ["OPENCODE_BIN"] = "/no/such/binary"
+        os.environ["PATH"] = ""
+        with self.assertRaises(oc_local.LocalUpstreamError) as cm:
+            oc_local._run("session.create")
+        self.assertIn("binary not found", str(cm.exception))
 
 
 if __name__ == "__main__":

@@ -16,6 +16,7 @@ the local service is unavailable so the caller can fall back to direct HTTPS
 (which still serves billed keys).
 """
 import json
+import os
 import shutil
 import subprocess
 import time
@@ -35,12 +36,23 @@ class ModelError(Exception):
     so the caller must surface it instead."""
 
 
+def _opencode_bin():
+    """Absolute opencode binary: OPENCODE_BIN wins when executable,
+    else PATH lookup. None when unusable (LaunchAgent PATH is sparse)."""
+    configured = (os.environ.get("OPENCODE_BIN") or "").strip()
+    if configured and not os.path.isdir(configured) \
+            and os.access(configured, os.X_OK):
+        return configured
+    return shutil.which("opencode")
+
+
 def _run(*args):
     """Run `opencode api ...`, return parsed {"data": ...}. Raises LocalUpstreamError."""
-    if shutil.which("opencode") is None:
+    binary = _opencode_bin()
+    if binary is None:
         raise LocalUpstreamError("opencode binary not found")
     try:
-        out = subprocess.run(["opencode", "api"] + list(args),
+        out = subprocess.run([binary, "api"] + list(args),
                              capture_output=True, text=True, timeout=120)
     except (OSError, subprocess.SubprocessError) as e:
         raise LocalUpstreamError("opencode api failed: %s" % e)

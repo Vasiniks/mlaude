@@ -10,6 +10,9 @@ GH_REPO="${GH_REPO:-Vasiniks/mlaude}"
 BRANCH="${BRANCH:-main}"
 PORT="${ROUTER_PORT:-8787}"
 ROUTER_DIR="${ROUTER_DIR:-$HOME/.local/share/claude-router}"
+# Absolute opencode binary: the LaunchAgent PATH is sparse, so PATH
+# lookup fails there even when the binary exists for interactive shells.
+OPENCODE_BIN="${OPENCODE_BIN:-$HOME/.opencode/bin/opencode}"
 PLIST="$HOME/Library/LaunchAgents/com.user.claude-router.plist"
 KEYCHAIN_SERVICE="meta-model-api"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd || pwd)"
@@ -120,6 +123,7 @@ cat > "$PLIST" <<EOF
   <key>EnvironmentVariables</key>
   <dict>
     <key>ROUTER_PORT</key><string>$PORT</string>
+    <key>OPENCODE_BIN</key><string>$OPENCODE_BIN</string>
   </dict>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
